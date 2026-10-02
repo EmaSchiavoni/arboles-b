@@ -146,7 +146,7 @@ export function PlayAuto() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Badge>orden p = {p}</Badge>
         <Badge variant="secondary">máx {p - 1} claves</Badge>
-        <Badge variant="secondary">mín {Math.ceil((p - 1) / 2)} claves</Badge>
+        <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
         <Badge variant="secondary">altura {stats.h}</Badge>
         <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
       </div>

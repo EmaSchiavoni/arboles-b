@@ -21,7 +21,8 @@ export interface ValidationResult {
 
 export function validateManualTree(nodes: ManualNode[], p: number, rootId: string | null): ValidationResult {
   const issues: ValidationIssue[] = [];
-  const min = Math.ceil((p - 1) / 2);
+  const minPtr = Math.ceil(p / 2); // punteros mínimos en nodos no-raíz no-hoja
+  const min = minPtr - 1; // claves mínimas en nodos no-raíz
   const max = p - 1;
 
   if (nodes.length === 0) return { valid: true, issues: [] };
@@ -39,7 +40,7 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
     }
     const isRoot = n.id === rootId;
     if (!isRoot && n.keys.length < min) {
-      issues.push({ nodeId: n.id, message: `Tiene ${n.keys.length} claves, el mínimo con p=${p} es ${min}.` });
+      issues.push({ nodeId: n.id, message: `Tiene ${n.keys.length} claves, el mínimo con p=${p} es ${min} (${minPtr} punteros).` });
     }
     if (isRoot && n.keys.length < 1) {
       issues.push({ nodeId: n.id, message: 'La raíz no puede estar vacía si hay nodos.' });
@@ -92,10 +93,14 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
   }
 
   // Hijos: 0 o keys+1 (contando solo slots conectados; los null deben ser todos o ninguno).
+  // Raíz no única: si tiene hijos, como mínimo 2 punteros.
   for (const n of nodes) {
     const connected = n.slots.filter((s) => s !== null).length;
     if (connected !== 0 && connected !== n.slots.length) {
       issues.push({ nodeId: n.id, message: 'Si el nodo tiene hijos, todos los slots deben estar conectados.' });
+    }
+    if (n.id === rootId && connected !== 0 && connected < 2) {
+      issues.push({ nodeId: n.id, message: 'La raíz con hijos debe tener como mínimo 2 punteros.' });
     }
   }
 

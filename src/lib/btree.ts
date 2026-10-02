@@ -1,7 +1,8 @@
 // Núcleo puro del Árbol B. Sin dependencias de React.
-// Definición del proyecto: p = cantidad máxima de punteros por nodo.
-// Máximo p-1 claves, mínimo ceil((p-1)/2) en nodos no-raíz.
-// Raíz no vacía: 1..p-1 claves. Hijos: 0 o |claves|+1. Hojas a igual profundidad.
+// Reglas de la cátedra: p = cantidad máxima de punteros de árbol por nodo.
+// Máximo p-1 claves. Nodos no-raíz no-hoja: mínimo ceil(p/2) punteros
+// (o sea, ceil(p/2)-1 claves). Raíz: 2..p punteros, salvo nodo único
+// (hoja con 1..p-1 claves). Hijos: 0 o |claves|+1. Hojas al mismo nivel.
 
 export interface BNode {
   id: string;
@@ -14,8 +15,12 @@ export interface BTree {
   p: number;
 }
 
+export function minPointers(p: number): number {
+  return Math.ceil(p / 2);
+}
+
 export function minKeys(p: number): number {
-  return Math.ceil((p - 1) / 2);
+  return Math.ceil(p / 2) - 1;
 }
 
 export function maxKeys(p: number): number {
@@ -83,44 +88,40 @@ export function contains(root: BNode | null, key: number): boolean {
   return false;
 }
 
-function splitChild(parent: BNode, index: number, p: number): void {
-  const full = parent.children[index];
-  const mid = Math.floor(full.keys.length / 2);
-  const median = full.keys[mid];
-  const leftKeys = full.keys.slice(0, mid);
-  const rightKeys = full.keys.slice(mid + 1);
-  const leftChildren = full.children.length > 0 ? full.children.slice(0, mid + 1) : [];
-  const rightChildren = full.children.length > 0 ? full.children.slice(mid + 1) : [];
-  const left = makeNode(leftKeys, leftChildren);
-  const right = makeNode(rightKeys, rightChildren);
-  full.keys = leftKeys;
-  full.children = leftChildren;
-  // Reutilizamos `full` como izquierda para conservar el id en el camino visual,
-  // y creamos el derecho nuevo. Para no confundir, mejor crear ambos nuevos:
-  parent.children[index] = { ...left, id: full.id };
-  parent.children.splice(index + 1, 0, right);
-  parent.keys.splice(index, 0, median);
+// ---------- Inserción bottom-up ----------
+// Se inserta recursivamente y al volver se parte el nodo solo si desbordó
+// (p claves, una más que el máximo). Así el nodo a partir siempre tiene
+// cantidad impar de claves y ambos lados quedan con >= minKeys, para todo p.
+
+function splitOverflow(node: BNode, p: number): { median: number; right: BNode } {
+  const mid = Math.floor(p / 2);
+  const median = node.keys[mid];
+  const right = makeNode(
+    node.keys.slice(mid + 1),
+    node.children.length > 0 ? node.children.slice(mid + 1) : [],
+  );
+  node.keys = node.keys.slice(0, mid);
+  if (node.children.length > 0) node.children = node.children.slice(0, mid + 1);
   void p;
+  return { median, right };
 }
 
-function insertNonFull(node: BNode, key: number, p: number): void {
-  let i = node.keys.length - 1;
+// Devuelve null si no hubo desborde, o la mediana + mitad derecha si el
+// nodo superó el máximo y el padre debe insertarlos.
+function insertRec(node: BNode, key: number, p: number): { median: number; right: BNode } | null {
+  let i = 0;
+  while (i < node.keys.length && key > node.keys[i]) i += 1;
+  if (i < node.keys.length && node.keys[i] === key) return null; // Duplicado.
   if (node.children.length === 0) {
-    // Hoja: inserción ordenada, ignora duplicados.
-    if (node.keys.includes(key)) return;
-    node.keys.push(key);
-    node.keys.sort((a, b) => a - b);
-    return;
+    node.keys.splice(i, 0, key);
+  } else {
+    const res = insertRec(node.children[i], key, p);
+    if (!res) return null;
+    node.keys.splice(i, 0, res.median);
+    node.children.splice(i + 1, 0, res.right);
   }
-  while (i >= 0 && key < node.keys[i]) i -= 1;
-  if (node.keys[i + 1] === key || node.keys[i] === key) return;
-  i += 1;
-  if (node.children[i].keys.length === maxKeys(p)) {
-    splitChild(node, i, p);
-    if (key > node.keys[i]) i += 1;
-    else if (key === node.keys[i]) return;
-  }
-  insertNonFull(node.children[i], key, p);
+  if (node.keys.length > maxKeys(p)) return splitOverflow(node, p);
+  return null;
 }
 
 export function insertKey(tree: BTree, key: number): BTree {
@@ -131,13 +132,10 @@ export function insertKey(tree: BTree, key: number): BTree {
     return { p, root: makeNode([key]) };
   }
   if (contains(root, key)) return { p, root };
-  if (root.keys.length === maxKeys(p)) {
-    const newRoot = makeNode([], [root]);
-    splitChild(newRoot, 0, p);
-    insertNonFull(newRoot, key, p);
-    return { p, root: newRoot };
+  const res = insertRec(root, key, p);
+  if (res) {
+    return { p, root: makeNode([res.median], [root, res.right]) };
   }
-  insertNonFull(root, key, p);
   return { p, root };
 }
 
@@ -149,12 +147,6 @@ function getPredecessor(node: BNode): number {
   return cur.keys[cur.keys.length - 1];
 }
 
-function getSuccessor(node: BNode): number {
-  let cur = node;
-  while (cur.children.length > 0) cur = cur.children[0];
-  return cur.keys[0];
-}
-
 function mergeChildren(parent: BNode, index: number): void {
   const left = parent.children[index];
   const right = parent.children[index + 1];
@@ -164,35 +156,48 @@ function mergeChildren(parent: BNode, index: number): void {
   parent.children.splice(index + 1, 1);
 }
 
-function fillChild(parent: BNode, index: number, p: number): void {
+// Repara al hijo `index` si quedó por debajo del mínimo al volver de la
+// recursión (préstamo de un hermano o fusión con un hermano). La fusión le
+// cuesta una clave al padre; si el padre cae bajo el mínimo, lo repara su
+// propio padre al volver (cascada hasta la raíz, que no tiene mínimo).
+function fixChild(parent: BNode, index: number, p: number): void {
   const min = minKeys(p);
-  const leftSibling = index > 0 ? parent.children[index - 1] : null;
-  const rightSibling = index < parent.children.length - 1 ? parent.children[index + 1] : null;
-  if (leftSibling && leftSibling.keys.length > min) {
-    // Préstamo desde la izquierda.
+  for (let guard = 0; guard < 3; guard += 1) {
     const child = parent.children[index];
-    child.keys.unshift(parent.keys[index - 1]);
-    parent.keys[index - 1] = leftSibling.keys.pop() as number;
-    if (leftSibling.children.length > 0) {
-      child.children.unshift(leftSibling.children.pop() as BNode);
+    if (!child || child.keys.length >= min) return;
+    const leftSibling = index > 0 ? parent.children[index - 1] : null;
+    const rightSibling = index < parent.children.length - 1 ? parent.children[index + 1] : null;
+    if (leftSibling && leftSibling.keys.length > min) {
+      // Préstamo desde la izquierda.
+      child.keys.unshift(parent.keys[index - 1]);
+      parent.keys[index - 1] = leftSibling.keys.pop() as number;
+      if (leftSibling.children.length > 0) {
+        child.children.unshift(leftSibling.children.pop() as BNode);
+      }
+      return;
     }
-  } else if (rightSibling && rightSibling.keys.length > min) {
-    // Préstamo desde la derecha.
-    const child = parent.children[index];
-    child.keys.push(parent.keys[index]);
-    parent.keys[index] = rightSibling.keys.shift() as number;
-    if (rightSibling.children.length > 0) {
-      child.children.push(rightSibling.children.shift() as BNode);
+    if (rightSibling && rightSibling.keys.length > min) {
+      // Préstamo desde la derecha.
+      child.keys.push(parent.keys[index]);
+      parent.keys[index] = rightSibling.keys.shift() as number;
+      if (rightSibling.children.length > 0) {
+        child.children.push(rightSibling.children.shift() as BNode);
+      }
+      return;
     }
-  } else if (leftSibling) {
-    mergeChildren(parent, index - 1);
-  } else if (rightSibling) {
-    mergeChildren(parent, index);
+    if (leftSibling) {
+      mergeChildren(parent, index - 1);
+      return;
+    }
+    if (rightSibling) {
+      mergeChildren(parent, index);
+      return;
+    }
+    return; // Sin hermanos: no hay nada que reparar (no debería pasar).
   }
 }
 
-function removeFromNode(node: BNode, key: number, p: number, isRoot: boolean): void {
-  const min = minKeys(p);
+function removeFromNode(node: BNode, key: number, p: number): void {
   const idx = node.keys.findIndex((k) => k === key);
   if (idx !== -1) {
     if (node.children.length === 0) {
@@ -200,38 +205,23 @@ function removeFromNode(node: BNode, key: number, p: number, isRoot: boolean): v
       node.keys.splice(idx, 1);
       return;
     }
+    // Clave en nodo interno: se reemplaza por el predecesor y se borra el
+    // predecesor del subárbol izquierdo. Si ese hijo queda bajo el mínimo,
+    // fixChild lo repara al volver (préstamo o fusión con el derecho).
+    // No se fusiona acá: con p impar, fusionar dos mínimos + la clave del
+    // padre supera el máximo y la recursión no siempre lo compensa.
     const leftChild = node.children[idx];
-    const rightChild = node.children[idx + 1];
-    if (leftChild.keys.length > min) {
-      const pred = getPredecessor(leftChild);
-      node.keys[idx] = pred;
-      removeFromNode(leftChild, pred, p, false);
-    } else if (rightChild.keys.length > min) {
-      const succ = getSuccessor(rightChild);
-      node.keys[idx] = succ;
-      removeFromNode(rightChild, succ, p, false);
-    } else {
-      mergeChildren(node, idx);
-      removeFromNode(leftChild, key, p, false);
-    }
+    const pred = getPredecessor(leftChild);
+    node.keys[idx] = pred;
+    removeFromNode(leftChild, pred, p);
+    fixChild(node, idx, p);
     return;
   }
   if (node.children.length === 0) return; // No existe.
   let i = 0;
   while (i < node.keys.length && key > node.keys[i]) i += 1;
-  const child = node.children[i];
-  if (!child) return;
-  if (child.keys.length <= min && !(isRoot && node.keys.length === 1 && node.children.length === 2)) {
-    // Si el hijo tiene el mínimo, hay que reforzarlo antes de bajar.
-    // En raíz con pocas claves igual intentamos rellenar si hay hermanos con de sobra.
-    if (child.keys.length === min || child.keys.length < min) {
-      // Solo rellenar si el padre tiene claves para prestar/mezclar.
-      if (node.keys.length > 0) fillChild(node, i, p);
-    }
-  }
-  // Tras un merge el índice puede haber cambiado.
-  const next = node.children[Math.min(i, node.children.length - 1)];
-  removeFromNode(next, key, p, false);
+  removeFromNode(node.children[i], key, p);
+  fixChild(node, i, p);
 }
 
 export function deleteKey(tree: BTree, key: number): BTree {
@@ -239,7 +229,7 @@ export function deleteKey(tree: BTree, key: number): BTree {
   const p = tree.p;
   if (!root) return { p, root: null };
   if (!contains(root, key)) return { p, root };
-  removeFromNode(root, key, p, true);
+  removeFromNode(root, key, p);
   if (root.keys.length === 0) {
     if (root.children.length > 0) return { p, root: root.children[0] };
     return { p, root: null };
