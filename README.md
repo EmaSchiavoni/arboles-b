@@ -1,0 +1,45 @@
+# Árboles B · Playground
+
+Aplicación web estática para experimentar con la estructura de datos Árbol B. Incluye dos playgrounds: uno automático que genera y mantiene el árbol al insertar, eliminar y buscar claves; y un editor manual para construir el árbol a mano y validar si cumple las reglas.
+
+## Definición de orden
+
+En este proyecto, el orden `p` es la cantidad máxima de punteros por nodo. Cada nodo contiene como máximo `p - 1` claves y como mínimo `ceil((p - 1) / 2)` claves, excepto la raíz, que contiene entre 1 y `p - 1` claves cuando el árbol no está vacío. Cada nodo tiene 0 hijos (hoja) o exactamente `|claves| + 1` hijos. Todas las hojas se encuentran a la misma profundidad. Las claves están ordenadas de forma ascendente y no hay duplicados. Cada hijo `i` contiene claves dentro del rango `(claves[i-1], claves[i])`.
+
+## Playground automático
+
+Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, generar claves aleatorias, vaciar el árbol y consultar el historial de operaciones. El camino de búsqueda se resalta en el canvas. El panel superior muestra el máximo y mínimo de claves por nodo, la altura, la cantidad de nodos y la cantidad total de claves. Al cambiar el orden, el árbol se reconstruye reinsertando las claves existentes. El estado se conserva en `localStorage`.
+
+## Editor manual
+
+Editor libre para construir el árbol a mano: crear y eliminar nodos, editar claves, arrastrar nodos por el canvas, marcar la raíz y conectar punteros por slots (`|claves| + 1` por nodo). En escritorio, el botón `+` aparece al pasar el cursor sobre un slot; en móvil está siempre visible. Al iniciar una conexión se resaltan los destinos posibles; la conexión se cancela con `Esc` o tocando el fondo del canvas. El botón Validar verifica todas las reglas del orden `p` configurado y lista los errores, resaltando los nodos afectados. El borrador se conserva en `localStorage`.
+
+## Validación
+
+El validador comprueba: claves ordenadas y sin duplicados (dentro de cada nodo y en todo el árbol), cantidad de claves según `p`, cantidad de hijos igual a 0 o a `|claves| + 1` con todos los slots conectados, raíz única y alcanzable, ausencia de ciclos y nodos sueltos, rango de claves válido en cada subárbol y hojas a igual profundidad.
+
+## Interfaz
+
+Componentes estilo shadcn con Tailwind y paleta monocromática (zinc). Soporta tema claro y oscuro con persistencia. Diseño mobile-first con pestañas para cambiar de playground. Las barras de herramientas son flotantes, están fijadas abajo, centradas y con ancho mínimo.
+
+## Uso
+
+```bash
+npm install
+npm run dev      # servidor de desarrollo
+npm run build    # compilación a dist/
+npm run preview  # vista previa de la compilación
+```
+
+Sin backend ni base de datos: toda la persistencia (tema, orden de cada playground, último árbol automático y borrador manual) reside en `localStorage`.
+
+## Estructura del código
+
+- `src/lib/btree.ts`: inserción con división, eliminación con préstamo y fusión, búsqueda.
+- `src/lib/validate.ts`: validación de árboles manuales.
+- `src/lib/layout.ts`: cálculo de posiciones por niveles.
+- `src/lib/storage.ts`: acceso a `localStorage`.
+- `src/routes/PlayAuto.tsx`: playground automático.
+- `src/routes/PlayManual.tsx`: editor manual.
+- `src/components/TreeCanvas.tsx`: canvas compartido.
+- `src/components/BottomToolbar.tsx`: barra flotante inferior.
