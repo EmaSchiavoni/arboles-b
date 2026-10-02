@@ -8,7 +8,7 @@ export function BottomToolbar({ children, className }: { children: React.ReactNo
     <div
       className={cn(
         'fixed bottom-3 left-1/2 z-40 w-max max-w-[calc(100vw-1rem)] -translate-x-1/2',
-        'flex flex-wrap items-center justify-center gap-2',
+        'mb-[env(safe-area-inset-bottom)] flex flex-wrap items-center justify-center gap-2',
         'rounded-lg border bg-card/95 px-2 py-2 shadow-lg backdrop-blur',
         className,
       )}
