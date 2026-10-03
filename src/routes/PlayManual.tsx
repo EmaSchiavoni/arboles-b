@@ -5,13 +5,32 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { BottomToolbar } from '../components/BottomToolbar';
-import { TreeCanvas, NODE_HEIGHT, nodeWidth } from '../components/TreeCanvas';
+import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
 import { KEYS, load, save } from '../lib/storage';
 import { cn } from '../lib/utils';
 
 const MIN_P = 3;
 const MAX_P = 8;
+
+// Tabla de una sola fila: columnas alternadas puntero (delgada) / clave.
+// Con k claves hay 2k+1 columnas (nodo lleno: 2p-1). La columna de puntero
+// solo aloja el inicio de la flecha; las claves van una al lado de otra.
+const SLOT_COL_W = 30;
+const KEY_COL_W = 64;
+
+function manualNodeWidth(keysCount: number): number {
+  return Math.max(150, (keysCount + 1) * SLOT_COL_W + keysCount * KEY_COL_W);
+}
+
+// Coordenada x absoluta del centro de la columna del slot (para la flecha).
+function manualSlotX(n: ManualNode, slot: number): number {
+  const k = n.keys.length;
+  const w = manualNodeWidth(k);
+  if (k === 0) return n.x + w / 2;
+  const keyW = (w - (k + 1) * SLOT_COL_W) / k;
+  return n.x + slot * (SLOT_COL_W + keyW) + SLOT_COL_W / 2;
+}
 
 function uid(): string {
   return `m${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -236,10 +255,17 @@ export function PlayManual() {
           linking={!!linking}
           errorIds={errorIds}
           onBackgroundClick={() => setLinking(null)}
+          getNodeWidth={manualNodeWidth}
+          getSlotX={manualSlotX}
           renderNode={(n) => {
             const isRoot = n.id === rootId;
             const isTarget = !!linking && linking.nodeId !== n.id;
             const bad = errorIds.has(n.id);
+            const cols: string[] = [];
+            for (let s = 0; s <= n.keys.length; s += 1) {
+              cols.push(`${SLOT_COL_W}px`);
+              if (s < n.keys.length) cols.push('minmax(0,1fr)');
+            }
             return (
               <div
                 data-node
@@ -248,88 +274,94 @@ export function PlayManual() {
                   bad ? 'border-red-500 ring-1 ring-red-500' : isRoot ? 'border-zinc-900 dark:border-zinc-100' : 'border-border',
                   isTarget && 'ring-2 ring-dashed ring-zinc-500',
                 )}
-                style={{ minHeight: NODE_HEIGHT }}
               >
                 <div
-                  className="flex cursor-grab touch-none items-center gap-1 border-b px-2 py-1 text-[11px] text-muted-foreground active:cursor-grabbing"
-                  onPointerDown={(e) => onNodePointerDown(e, n.id)}
+                  className="flex h-6 cursor-grab touch-none items-center gap-1 border-b px-1 text-muted-foreground active:cursor-grabbing"
+                  onPointerDown={(e) => {
+                    if ((e.target as HTMLElement).closest('input,button')) return;
+                    onNodePointerDown(e, n.id);
+                  }}
                   onPointerMove={onNodePointerMove}
                   onPointerUp={onNodePointerUp}
                 >
-                  <GripVertical className="size-3.5" />
-                  <span className="flex-1 truncate">{isRoot ? 'raíz' : 'nodo'}</span>
-                  {!isRoot && (
-                    <button type="button" title="Marcar como raíz" onClick={() => setRoot(n.id)} className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                      <Crown className="size-3.5" />
-                    </button>
-                  )}
-                  <button type="button" title="Eliminar nodo" onClick={() => deleteNode(n.id)} className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-1 p-2">
-                  {n.keys.map((k, i) => (
-                    <span key={`${i}-${k}`} className="group/key flex items-center gap-0.5">
-                      <Input
-                        defaultValue={k}
-                        key={`${n.id}-${i}`}
-                        inputMode="numeric"
-                        aria-label={`Clave ${i + 1}`}
-                        className={cn('h-8 w-14 px-1 text-center text-sm', bad && 'border-red-400')}
-                        onBlur={(e) => editKey(n.id, i, e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                      />
-                      <button type="button" title="Quitar clave" onClick={() => removeKey(n.id, i)} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
-                        <X className="size-3.5" />
-                      </button>
-                    </span>
-                  ))}
-                  {n.keys.length < p - 1 && (
-                    <span className="flex items-center gap-1">
+                  <GripVertical className="size-3.5 shrink-0" />
+                  {n.keys.length < p - 1 ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-0.5">
                       <Input
                         value={newKey[n.id] ?? ''}
                         onChange={(e) => setNewKey((s) => ({ ...s, [n.id]: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') addKey(n.id); }}
                         inputMode="numeric"
-                        placeholder="+"
+                        placeholder="+ clave"
                         aria-label="Nueva clave"
-                        className="h-8 w-14 px-1 text-center text-sm"
+                        className="h-5 min-w-0 flex-1 px-1 text-center text-[11px]"
                       />
-                      <button type="button" title="Agregar clave" onClick={() => addKey(n.id)} className="rounded border p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                        <Plus className="size-3.5" />
+                      <button type="button" title="Agregar clave" onClick={() => addKey(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                        <Plus className="size-3" />
                       </button>
                     </span>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-center text-[10px]">{isRoot ? 'raíz' : `lleno (${p - 1})`}</span>
                   )}
+                  {!isRoot && (
+                    <button type="button" title="Marcar como raíz" onClick={() => setRoot(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <Crown className="size-3" />
+                    </button>
+                  )}
+                  <button type="button" title="Eliminar nodo" onClick={() => deleteNode(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Trash2 className="size-3" />
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-between px-2 pb-2">
+                <div className="grid h-10 w-full" style={{ gridTemplateColumns: cols.join(' ') }}>
                   {n.slots.map((s, slot) => (
-                    <span key={slot} className="group/slot relative flex flex-col items-center gap-0.5">
-                      <span className="text-[10px] text-muted-foreground">p{slot}</span>
-                      {s ? (
-                        <button
-                          type="button"
-                          title="Eliminar puntero"
-                          onClick={() => removeLink(n.id, slot)}
-                          className="flex size-6 items-center justify-center rounded-full border border-zinc-900 text-xs dark:border-zinc-100"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          title="Crear puntero desde aquí"
-                          onClick={() => startLink(n.id, slot)}
-                          className={cn(
-                            'flex size-6 items-center justify-center rounded-full border border-dashed',
-                            linking?.nodeId === n.id && linking?.slot === slot
-                              ? 'border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-                              : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 sm:opacity-60 sm:group-hover/slot:opacity-100 dark:border-zinc-600 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
-                          )}
-                        >
-                          <Plus className="size-3" />
-                        </button>
+                    <span key={`cells-${slot}`} className="contents">
+                      <span className={cn('flex items-center justify-center', slot > 0 && 'border-l border-border')}>
+                        {s ? (
+                          <button
+                            type="button"
+                            title={`Quitar puntero ${slot}`}
+                            onClick={() => removeLink(n.id, slot)}
+                            className="flex size-5 items-center justify-center rounded-full border border-zinc-900 dark:border-zinc-100"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            title={`Crear puntero ${slot} desde aquí`}
+                            onClick={() => startLink(n.id, slot)}
+                            className={cn(
+                              'flex size-5 items-center justify-center rounded-full border border-dashed',
+                              linking?.nodeId === n.id && linking?.slot === slot
+                                ? 'border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                                : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-600 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
+                            )}
+                          >
+                            <Plus className="size-3" />
+                          </button>
+                        )}
+                      </span>
+                      {slot < n.keys.length && (
+                        <span className="group/key relative flex min-w-0 items-center border-l border-border">
+                          <Input
+                            defaultValue={n.keys[slot]}
+                            key={`${n.id}-${slot}-${n.keys[slot]}`}
+                            inputMode="numeric"
+                            aria-label={`Clave ${slot + 1}`}
+                            className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
+                            onBlur={(e) => editKey(n.id, slot, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          />
+                          <button
+                            type="button"
+                            title="Quitar clave"
+                            onClick={() => removeKey(n.id, slot)}
+                            className="absolute -top-0.5 right-0 rounded-full bg-card p-0.5 text-muted-foreground hover:text-foreground max-sm:opacity-100 sm:opacity-0 sm:group-hover/key:opacity-100"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
                       )}
                     </span>
                   ))}
@@ -372,7 +404,6 @@ export function PlayManual() {
         {linking && <Button size="sm" variant="outline" onClick={() => setLinking(null)}><X />Cancelar</Button>}
         <Button size="sm" variant="ghost" onClick={doClear} title="Borrar todo"><Eraser /></Button>
       </BottomToolbar>
-      <span className="hidden">{nodeWidth(0)}</span>
     </div>
   );
 }

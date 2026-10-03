@@ -28,9 +28,13 @@ interface Props<T extends CanvasNode> {
   linking?: boolean;
   onBackgroundClick?: () => void;
   extraSvg?: React.ReactNode;
+  // Geometría opcional: ancho del nodo según cantidad de claves y coordenada
+  // x absoluta del ancla de cada slot de salida (inicio de la flecha).
+  getNodeWidth?: (keysCount: number) => number;
+  getSlotX?: (node: T, slot: number) => number;
 }
 
-export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg }: Props<T>) {
+export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
   const drag = React.useRef<{ sx: number; sy: number; px: number; py: number; active: boolean }>({ sx: 0, sy: 0, px: 0, py: 0, active: false });
@@ -57,15 +61,16 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
     setPan((p) => ({ ...p, y: p.y - e.deltaY * 0.5, x: p.x - e.deltaX * 0.5 }));
   }
 
-  const contentW = Math.max(600, ...nodes.map((n) => n.x + nodeWidth(n.keys.length) + 80));
+  const widthOf = getNodeWidth ?? nodeWidth;
+  const contentW = Math.max(600, ...nodes.map((n) => n.x + widthOf(n.keys.length) + 80));
   const contentH = Math.max(400, ...nodes.map((n) => n.y + NODE_HEIGHT + 120));
 
-  function edgePath(from: CanvasNode, to: CanvasNode, slot: number): string {
-    const fw = nodeWidth(from.keys.length);
+  function edgePath(from: T, to: T, slot: number): string {
+    const fw = widthOf(from.keys.length);
     const slotCount = from.keys.length + 1;
-    const x1 = from.x + ((slot + 0.5) / Math.max(1, slotCount)) * fw;
+    const x1 = getSlotX ? getSlotX(from, slot) : from.x + ((slot + 0.5) / Math.max(1, slotCount)) * fw;
     const y1 = from.y + NODE_HEIGHT;
-    const tw = nodeWidth(to.keys.length);
+    const tw = widthOf(to.keys.length);
     const x2 = to.x + tw / 2;
     const y2 = to.y;
     const mid = (y1 + y2) / 2;
@@ -118,7 +123,7 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
           {extraSvg}
         </svg>
         {nodes.map((n) => (
-          <div key={n.id} className="absolute" style={{ left: n.x, top: n.y, width: nodeWidth(n.keys.length) }}>
+          <div key={n.id} className="absolute" style={{ left: n.x, top: n.y, width: widthOf(n.keys.length) }}>
             {renderNode(n)}
           </div>
         ))}

@@ -12,7 +12,7 @@ Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, 
 
 ## Editor manual
 
-Editor libre para construir el árbol a mano: crear y eliminar nodos, editar claves, arrastrar nodos por el canvas, marcar la raíz y conectar punteros por slots (`|claves| + 1` por nodo). En escritorio, el botón `+` aparece al pasar el cursor sobre un slot; en móvil está siempre visible. Al iniciar una conexión se resaltan los destinos posibles; la conexión se cancela con `Esc` o tocando el fondo del canvas. El botón Validar verifica todas las reglas del orden `p` configurado y lista los errores, resaltando los nodos afectados. El borrador se conserva en `localStorage`.
+Editor libre para construir el árbol a mano: crear y eliminar nodos, editar claves, arrastrar nodos por el canvas, marcar la raíz y conectar punteros por slots (`|claves| + 1` por nodo). Cada nodo es una tabla de una sola fila con columnas alternadas de puntero (delgadas) y clave, una al lado de la otra. En escritorio, el botón `+` aparece al pasar el cursor sobre un slot; en móvil está siempre visible. Al iniciar una conexión se resaltan los destinos posibles; la conexión se cancela con `Esc` o tocando el fondo del canvas. El botón Validar verifica todas las reglas del orden `p` configurado y lista los errores, resaltando los nodos afectados. El borrador se conserva en `localStorage`.
 
 ## Validación
 
