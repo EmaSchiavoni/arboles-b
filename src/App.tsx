@@ -49,12 +49,6 @@ export default function App() {
       <main>
         {tab === 'auto' ? <PlayAuto key="auto" /> : <PlayManual key="manual" />}
       </main>
-
-      <footer className="border-t">
-        <p className="mx-auto w-full max-w-5xl px-3 py-4 pb-24 text-center text-xs text-muted-foreground">
-          Hecho para practicar Árboles B. Todo queda en tu navegador (localStorage), no hay servidor.
-        </p>
-      </footer>
     </div>
   );
 }
