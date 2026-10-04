@@ -217,8 +217,8 @@ export function PlayManual() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-3 pb-28 pt-3">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
         <Badge>orden p = {p}</Badge>
         <Badge variant="secondary">máx {p - 1} claves</Badge>
         <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
@@ -226,7 +226,7 @@ export function PlayManual() {
         {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
       </div>
 
-      <div className="mb-3 flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
         <label htmlFor="orden-manual" className="text-sm text-muted-foreground">Orden p ({MIN_P}–{MAX_P})</label>
         <input
           id="orden-manual"
@@ -240,20 +240,17 @@ export function PlayManual() {
         <span className="text-sm font-medium">{p}</span>
       </div>
 
-      {linking && (
-        <p className="mb-2 rounded-md border border-dashed px-3 py-2 text-center text-sm">
-          Tocá el icono <ArrowDownToLine className="inline size-4" /> del nodo destino para conectar el puntero · Esc o tocar el fondo para cancelar
-        </p>
-      )}
-
       {nodes.length === 0 ? (
-        <Card className="mb-3">
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No hay nodos. Creá el primero con el botón de la barra inferior.
-          </CardContent>
-        </Card>
+        <div className="min-h-0 flex-1 p-3">
+          <Card className="mb-3">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No hay nodos. Creá el primero con el botón de la barra inferior.
+            </CardContent>
+          </Card>
+        </div>
       ) : (
-        <TreeCanvas
+        <div className="relative min-h-0 flex-1">
+          <TreeCanvas
           nodes={nodes}
           edges={edges}
           linking={!!linking}
@@ -290,7 +287,11 @@ export function PlayManual() {
                   onPointerUp={onNodePointerUp}
                 >
                   <GripVertical className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate text-center text-[10px]">{isRoot ? 'raíz' : 'nodo'}</span>
+                  {isRoot ? (
+                    <span className="min-w-0 flex-1 truncate text-center text-[10px]">raíz</span>
+                  ) : (
+                    <span className="min-w-0 flex-1" />
+                  )}
                   {!full && (
                     <button type="button" title="Ir a la primera celda vacía" onClick={() => focusEmptyKey(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Plus className="size-3" />
@@ -367,9 +368,8 @@ export function PlayManual() {
                                 key={`${n.id}-empty-${slot}`}
                                 data-empty-cell={n.id}
                                 inputMode="numeric"
-                                placeholder="·"
                                 aria-label={`Clave vacía ${slot + 1}`}
-                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm text-muted-foreground shadow-none placeholder:text-zinc-300 focus-visible:ring-0 dark:placeholder:text-zinc-700"
+                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm text-muted-foreground shadow-none focus-visible:ring-0"
                                 onBlur={(e) => { addKey(n.id, e.target.value); e.target.value = ''; }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
@@ -400,22 +400,31 @@ export function PlayManual() {
               </div>
             );
           }}
-        />
-      )}
-
-      {result && (
-        <Card className="mt-3">
-          <CardContent>
-            <p className="mb-2 text-sm font-medium">{result.valid ? 'El árbol es válido.' : `Hay ${result.issues.length} problemas:`}</p>
-            {!result.valid && (
-              <ul className="max-h-48 space-y-1 overflow-auto text-sm text-muted-foreground">
-                {result.issues.map((it, i) => (
-                  <li key={i} className="rounded border border-red-200 px-2 py-1 dark:border-red-900">· {it.message}</li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+          />
+          {(linking || result) && (
+            <div className="pointer-events-none absolute inset-x-2 top-2 z-10 space-y-2">
+              {linking && (
+                <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                  Tocá el icono <ArrowDownToLine className="inline size-3.5" /> del nodo destino · Esc o fondo para cancelar
+                </p>
+              )}
+              {result && (
+                <Card className="pointer-events-auto mx-auto max-h-56 w-full max-w-md overflow-auto">
+                  <CardContent>
+                    <p className="mb-2 text-sm font-medium">{result.valid ? 'El árbol es válido.' : `Hay ${result.issues.length} problemas:`}</p>
+                    {!result.valid && (
+                      <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
+                        {result.issues.map((it, i) => (
+                          <li key={i} className="rounded border border-red-200 px-2 py-1 dark:border-red-900">· {it.message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <BottomToolbar>

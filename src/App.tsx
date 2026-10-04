@@ -18,8 +18,8 @@ export default function App() {
   }, [tab]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <header className="z-30 shrink-0 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900">
@@ -46,7 +46,7 @@ export default function App() {
         </div>
       </header>
 
-      <main>
+      <main className="min-h-0 flex-1">
         {tab === 'auto' ? <PlayAuto key="auto" /> : <PlayManual key="manual" />}
       </main>
     </div>

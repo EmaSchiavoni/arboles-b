@@ -157,8 +157,8 @@ export function PlayAuto() {
   const stats = { h: height(tree.root), n: countNodes(tree.root), k: countKeys(tree.root) };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-3 pb-28 pt-3">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
         <Badge>orden p = {p}</Badge>
         <Badge variant="secondary">máx {p - 1} claves</Badge>
         <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
@@ -166,7 +166,7 @@ export function PlayAuto() {
         <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
       </div>
 
-      <div className="mb-3 flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
         <label htmlFor="orden-auto" className="text-sm text-muted-foreground">Orden p ({MIN_P}–{MAX_P})</label>
         <input
           id="orden-auto"
@@ -181,13 +181,16 @@ export function PlayAuto() {
       </div>
 
       {tree.root === null ? (
-        <Card className="mb-3">
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            El árbol está vacío. Insertá la primera clave desde la barra de abajo.
-          </CardContent>
-        </Card>
+        <div className="min-h-0 flex-1 p-3">
+          <Card className="mb-3">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              El árbol está vacío. Insertá la primera clave desde la barra de abajo.
+            </CardContent>
+          </Card>
+        </div>
       ) : (
-        <TreeCanvas
+        <div className="relative min-h-0 flex-1">
+          <TreeCanvas
           nodes={layout.nodes}
           edges={layout.edges}
           highlightIds={highlight}
@@ -237,26 +240,33 @@ export function PlayAuto() {
               </div>
             );
           }}
-        />
-      )}
-
-      {message && <p className="mt-2 text-center text-sm text-muted-foreground">{message}</p>}
-
-      {showHistory && (
-        <Card className="mt-3">
-          <CardContent>
-            <p className="mb-2 text-sm font-medium">Historial</p>
-            {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
-            ) : (
-              <ul className="max-h-48 space-y-1 overflow-auto text-sm text-muted-foreground">
-                {history.map((h) => (
-                  <li key={h.id} className="rounded border px-2 py-1">· {h.text}</li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+          />
+          {(message || showHistory) && (
+            <div className="pointer-events-none absolute inset-x-2 top-2 z-10 space-y-2">
+              {message && (
+                <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                  {message}
+                </p>
+              )}
+              {showHistory && (
+                <Card className="pointer-events-auto mx-auto max-h-56 w-full max-w-md overflow-auto">
+                  <CardContent>
+                    <p className="mb-2 text-sm font-medium">Historial</p>
+                    {history.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
+                    ) : (
+                      <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
+                        {history.map((h) => (
+                          <li key={h.id} className="rounded border px-2 py-1">· {h.text}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <BottomToolbar>
@@ -278,8 +288,6 @@ export function PlayAuto() {
           {showHistory ? 'Ocultar' : 'Historial'}
         </Button>
       </BottomToolbar>
-      {/* spacer para que la toolbar flotante no tape el canvas en mobile */}
-      <div className="h-2" />
     </div>
   );
 }

@@ -92,8 +92,8 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
         onBackgroundClick?.();
       }}
       className={cn(
-        'relative h-[62vh] w-full touch-none overflow-hidden rounded-md border bg-white sm:h-[68vh] dark:bg-zinc-950',
-        linking && 'ring-1 ring-zinc-500',
+        'relative h-full w-full touch-none overflow-hidden bg-white dark:bg-zinc-950',
+        linking && 'ring-1 ring-inset ring-zinc-500',
       )}
     >
       <div
@@ -130,9 +130,6 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
             {renderNode(n)}
           </div>
         ))}
-      </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-zinc-900/80 px-2 py-0.5 text-[11px] text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
-        Arrastrá el fondo para mover · {nodes.length} nodos
       </div>
     </div>
   );
