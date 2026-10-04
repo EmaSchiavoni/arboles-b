@@ -43,6 +43,7 @@ export function PlayAuto() {
   const [history, setHistory] = React.useState<HistItem[]>(() => load<HistItem[]>(KEYS.autoHistory, []));
   const [keyInput, setKeyInput] = React.useState('');
   const [highlight, setHighlight] = React.useState<Set<string>>(new Set());
+  const [lastKey, setLastKey] = React.useState<number | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
 
@@ -84,6 +85,7 @@ export function PlayAuto() {
     const next = insertKey({ ...tree, p }, k);
     setTree(next);
     setHighlight(new Set(searchPath(next.root, k)));
+    setLastKey(k);
     setMessage(`Clave ${k} insertada.`);
     pushHistory(`insertar ${k} → ok`);
     setKeyInput('');
@@ -99,6 +101,7 @@ export function PlayAuto() {
     }
     setTree(deleteKey({ ...tree, p }, k));
     setHighlight(new Set());
+    setLastKey(null);
     setMessage(`Clave ${k} eliminada.`);
     pushHistory(`eliminar ${k} → ok`);
     setKeyInput('');
@@ -109,6 +112,7 @@ export function PlayAuto() {
     if (k === null) return;
     const found = contains(tree.root, k);
     setHighlight(new Set(searchPath(tree.root, k)));
+    setLastKey(null);
     setMessage(found ? `Clave ${k} encontrada.` : `Clave ${k} no encontrada.`);
     pushHistory(`buscar ${k} → ${found ? 'encontrada' : 'no encontrada'}`);
   }
@@ -122,6 +126,7 @@ export function PlayAuto() {
     const next = insertKey({ ...tree, p }, k);
     setTree(next);
     setHighlight(new Set(searchPath(next.root, k)));
+    setLastKey(k);
     pushHistory(`insertar ${k} → ok (aleatorio)`);
     setMessage(`Clave ${k} insertada (aleatorio).`);
   }
@@ -129,6 +134,7 @@ export function PlayAuto() {
   function doClear() {
     setTree({ p, root: null });
     setHighlight(new Set());
+    setLastKey(null);
     setMessage('Árbol vaciado.');
     pushHistory('limpiar → árbol vacío');
   }
@@ -149,6 +155,7 @@ export function PlayAuto() {
     setP(clamped);
     setTree(rebuilt);
     setHighlight(new Set());
+    setLastKey(null);
     pushHistory(`orden p=${clamped} → reconstruido con ${keys.length} claves`);
   }
 
@@ -228,7 +235,7 @@ export function PlayAuto() {
                         <span
                           className={cn(
                             'flex items-center justify-center border-l border-border text-sm font-medium',
-                            hot && n.keys[s] !== undefined && 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900',
+                            lastKey !== null && n.keys[s] === lastKey && 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-100',
                           )}
                         >
                           {n.keys[s] ?? ''}
