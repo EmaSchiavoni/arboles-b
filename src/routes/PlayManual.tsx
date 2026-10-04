@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
+import { Sheet } from '../components/ui/sheet';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
@@ -64,6 +65,7 @@ export function PlayManual() {
   });
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
   const [result, setResult] = React.useState<ValidationResult | null>(null);
+  const [sheetOpen, setSheetOpen] = React.useState(false);
   const dragRef = React.useRef<{ id: string; dx: number; dy: number } | null>(null);
 
   const { nodes, rootId, p } = draft;
@@ -90,6 +92,7 @@ export function PlayManual() {
   function update(fn: (d: Draft) => Draft) {
     setDraft((d) => fn(structuredClone(d)));
     setResult(null);
+    setSheetOpen(false);
   }
 
   function addNode() {
@@ -191,11 +194,13 @@ export function PlayManual() {
 
   function doValidate() {
     setResult(validateManualTree(nodes, p, rootId));
+    setSheetOpen(true);
   }
 
   function doClear() {
     setDraft((d) => ({ ...d, nodes: [], rootId: null }));
     setResult(null);
+    setSheetOpen(false);
     setLinking(null);
   }
 
@@ -401,27 +406,11 @@ export function PlayManual() {
             );
           }}
           />
-          {(linking || result) && (
-            <div className="pointer-events-none absolute inset-x-2 top-2 z-10 space-y-2">
-              {linking && (
-                <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
-                  Tocá el icono <ArrowDownToLine className="inline size-3.5" /> del nodo destino · Esc o fondo para cancelar
-                </p>
-              )}
-              {result && (
-                <Card className="pointer-events-auto mx-auto max-h-56 w-full max-w-md overflow-auto">
-                  <CardContent>
-                    <p className="mb-2 text-sm font-medium">{result.valid ? 'El árbol es válido.' : `Hay ${result.issues.length} problemas:`}</p>
-                    {!result.valid && (
-                      <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
-                        {result.issues.map((it, i) => (
-                          <li key={i} className="rounded border border-red-200 px-2 py-1 dark:border-red-900">· {it.message}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+          {linking && (
+            <div className="pointer-events-none absolute inset-x-2 top-2 z-10">
+              <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                Tocá el icono <ArrowDownToLine className="inline size-3.5" /> del nodo destino · Esc o fondo para cancelar
+              </p>
             </div>
           )}
         </div>
@@ -433,6 +422,29 @@ export function PlayManual() {
         {linking && <Button size="sm" variant="outline" onClick={() => setLinking(null)}><X />Cancelar</Button>}
         <Button size="sm" variant="ghost" onClick={doClear} title="Borrar todo"><Eraser /></Button>
       </BottomToolbar>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Resultado de la validación">
+        {!result ? null : result.valid ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="ok">válido</Badge>
+            <p className="text-sm text-muted-foreground">El árbol cumple todas las reglas del orden p = {p}.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="error">{result.issues.length} errores</Badge>
+              <p className="text-sm text-muted-foreground">Revisá los nodos marcados en rojo.</p>
+            </div>
+            <ul className="space-y-1.5">
+              {result.issues.map((it, i) => (
+                <li key={i} className="rounded-md border border-red-200 px-3 py-2 text-sm text-muted-foreground dark:border-red-900">
+                  · {it.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Sheet>
     </div>
   );
 }
