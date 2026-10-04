@@ -180,6 +180,8 @@ function mergeChildren(parent: BNode, index: number): void {
 // recursión (préstamo de un hermano o fusión con un hermano). La fusión le
 // cuesta una clave al padre; si el padre cae bajo el mínimo, lo repara su
 // propio padre al volver (cascada hasta la raíz, que no tiene mínimo).
+// Normalización de la cátedra: ante subocupación se pide SIEMPRE primero al
+// hermano izquierdo (préstamo y fusión) y luego al derecho.
 function fixChild(parent: BNode, index: number, p: number): void {
   const min = minKeys(p);
   for (let guard = 0; guard < 3; guard += 1) {
@@ -225,8 +227,8 @@ function removeFromNode(node: BNode, key: number, p: number): void {
       node.keys.splice(idx, 1);
       return;
     }
-    // Clave en nodo interno: se reemplaza por el predecesor y se borra el
-    // predecesor del subárbol izquierdo. Si ese hijo queda bajo el mínimo,
+    // Clave en nodo interno: se reemplaza por el predecesor (subárbol
+    // izquierdo, misma normalización) y se borra el predecesor de ese lado. Si ese hijo queda bajo el mínimo,
     // fixChild lo repara al volver (préstamo o fusión con el derecho).
     // No se fusiona acá: con p impar, fusionar dos mínimos + la clave del
     // padre supera el máximo y la recursión no siempre lo compensa.
