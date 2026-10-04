@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { TreeCanvas } from '../components/TreeCanvas';
-import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, searchPath, type BTree } from '../lib/btree';
+import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, insertKeyTracked, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
 import { cn } from '../lib/utils';
@@ -82,9 +82,9 @@ export function PlayAuto() {
       pushHistory(`insertar ${k} → duplicada`);
       return;
     }
-    const next = insertKey({ ...tree, p }, k);
+    const { tree: next, touched } = insertKeyTracked({ ...tree, p }, k);
     setTree(next);
-    setHighlight(new Set(searchPath(next.root, k)));
+    setHighlight(new Set(touched));
     setLastKey(k);
     setMessage(`Clave ${k} insertada.`);
     pushHistory(`insertar ${k} → ok`);
@@ -123,9 +123,9 @@ export function PlayAuto() {
       doRandom();
       return;
     }
-    const next = insertKey({ ...tree, p }, k);
+    const { tree: next, touched } = insertKeyTracked({ ...tree, p }, k);
     setTree(next);
-    setHighlight(new Set(searchPath(next.root, k)));
+    setHighlight(new Set(touched));
     setLastKey(k);
     pushHistory(`insertar ${k} → ok (aleatorio)`);
     setMessage(`Clave ${k} insertada (aleatorio).`);

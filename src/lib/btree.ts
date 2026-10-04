@@ -107,36 +107,56 @@ function splitOverflow(node: BNode, p: number): { median: number; right: BNode }
 }
 
 // Devuelve null si no hubo desborde, o la mediana + mitad derecha si el
-// nodo superó el máximo y el padre debe insertarlos.
-function insertRec(node: BNode, key: number, p: number): { median: number; right: BNode } | null {
+// nodo superó el máximo y el padre debe insertarlos. Registra en `touched`
+// los ids de los nodos creados o modificados (hoja que recibe la clave,
+// padres que reciben una mediana y mitades derechas de cada división).
+function insertRec(node: BNode, key: number, p: number, touched: Set<string>): { median: number; right: BNode } | null {
   let i = 0;
   while (i < node.keys.length && key > node.keys[i]) i += 1;
   if (i < node.keys.length && node.keys[i] === key) return null; // Duplicado.
   if (node.children.length === 0) {
     node.keys.splice(i, 0, key);
+    touched.add(node.id);
   } else {
-    const res = insertRec(node.children[i], key, p);
+    const res = insertRec(node.children[i], key, p, touched);
     if (!res) return null;
     node.keys.splice(i, 0, res.median);
     node.children.splice(i + 1, 0, res.right);
+    touched.add(node.id);
+    touched.add(res.right.id);
   }
-  if (node.keys.length > maxKeys(p)) return splitOverflow(node, p);
+  if (node.keys.length > maxKeys(p)) {
+    const out = splitOverflow(node, p);
+    touched.add(out.right.id);
+    return out;
+  }
   return null;
 }
 
 export function insertKey(tree: BTree, key: number): BTree {
-  if (!Number.isFinite(key) || !Number.isInteger(key)) return tree;
+  return insertKeyTracked(tree, key).tree;
+}
+
+// Igual que insertKey, pero además devuelve los ids de los nodos que la
+// inserción creó o modificó (divisiones incluidas), para resaltarlos en la UI.
+export function insertKeyTracked(tree: BTree, key: number): { tree: BTree; touched: string[] } {
+  if (!Number.isFinite(key) || !Number.isInteger(key)) return { tree, touched: [] };
   const root = cloneTree(tree.root);
   const p = tree.p;
+  const touched = new Set<string>();
   if (!root) {
-    return { p, root: makeNode([key]) };
+    const r = makeNode([key]);
+    touched.add(r.id);
+    return { tree: { p, root: r }, touched: [...touched] };
   }
-  if (contains(root, key)) return { p, root };
-  const res = insertRec(root, key, p);
+  if (contains(root, key)) return { tree: { p, root }, touched: [] };
+  const res = insertRec(root, key, p, touched);
   if (res) {
-    return { p, root: makeNode([res.median], [root, res.right]) };
+    const newRoot = makeNode([res.median], [root, res.right]);
+    touched.add(newRoot.id);
+    return { tree: { p, root: newRoot }, touched: [...touched] };
   }
-  return { p, root };
+  return { tree: { p, root }, touched: [...touched] };
 }
 
 // ---------- Eliminación clásica ----------

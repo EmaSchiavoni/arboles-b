@@ -8,7 +8,7 @@ En este proyecto, el orden `p` es la cantidad máxima de punteros de árbol por 
 
 ## Playground automático
 
-Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, generar claves aleatorias, vaciar el árbol y consultar el historial de operaciones. Cada nodo se muestra como una tabla completa de `2p - 1` columnas (punteros delgados y claves), con las celdas vacías siempre visibles. El camino de búsqueda se resalta en el canvas. El panel superior muestra el máximo y mínimo de claves por nodo, la altura, la cantidad de nodos y la cantidad total de claves. Al cambiar el orden, el árbol se reconstruye reinsertando las claves existentes. El estado se conserva en `localStorage`.
+Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, generar claves aleatorias, vaciar el árbol y consultar el historial de operaciones. Cada nodo se muestra como una tabla completa de `2p - 1` columnas (punteros delgados y claves), con las celdas vacías siempre visibles. El camino de búsqueda se resalta en el canvas. Al insertar, se marca en verde la clave nueva y con borde los nodos creados o modificados por la inserción (divisiones incluidas). El panel superior muestra el máximo y mínimo de claves por nodo, la altura, la cantidad de nodos y la cantidad total de claves. Al cambiar el orden, el árbol se reconstruye reinsertando las claves existentes. El estado se conserva en `localStorage`.
 
 ## Editor manual
 

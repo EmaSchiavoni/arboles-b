@@ -105,7 +105,9 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
             const f = byId.get(e.from);
             const t = byId.get(e.to);
             if (!f || !t) return null;
-            const hot = highlightIds?.has(e.from) || highlightIds?.has(e.to);
+            // La flecha se resalta solo si ambos extremos pertenecen al camino
+            // (si solo el origen está marcado, sus otras flechas quedan normal).
+            const hot = !!highlightIds?.has(e.from) && !!highlightIds?.has(e.to);
             const bad = errorIds?.has(e.from) || errorIds?.has(e.to);
             return (
               <path
