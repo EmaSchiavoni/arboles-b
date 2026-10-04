@@ -32,9 +32,11 @@ interface Props<T extends CanvasNode> {
   // x absoluta del ancla de cada slot de salida (inicio de la flecha).
   getNodeWidth?: (keysCount: number) => number;
   getSlotX?: (node: T, slot: number) => number;
+  // Alto del nodo (de dónde sale la flecha). Por defecto NODE_HEIGHT.
+  nodeHeight?: number;
 }
 
-export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX }: Props<T>) {
+export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
   const drag = React.useRef<{ sx: number; sy: number; px: number; py: number; active: boolean }>({ sx: 0, sy: 0, px: 0, py: 0, active: false });
@@ -62,14 +64,15 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
   }
 
   const widthOf = getNodeWidth ?? nodeWidth;
+  const heightOf = nodeHeight ?? NODE_HEIGHT;
   const contentW = Math.max(600, ...nodes.map((n) => n.x + widthOf(n.keys.length) + 80));
-  const contentH = Math.max(400, ...nodes.map((n) => n.y + NODE_HEIGHT + 120));
+  const contentH = Math.max(400, ...nodes.map((n) => n.y + heightOf + 120));
 
   function edgePath(from: T, to: T, slot: number): string {
     const fw = widthOf(from.keys.length);
     const slotCount = from.keys.length + 1;
     const x1 = getSlotX ? getSlotX(from, slot) : from.x + ((slot + 0.5) / Math.max(1, slotCount)) * fw;
-    const y1 = from.y + NODE_HEIGHT;
+    const y1 = from.y + heightOf;
     const tw = widthOf(to.keys.length);
     const x2 = to.x + tw / 2;
     const y2 = to.y;

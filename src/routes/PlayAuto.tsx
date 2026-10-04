@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { BottomToolbar } from '../components/BottomToolbar';
-import { TreeCanvas, nodeWidth, NODE_HEIGHT } from '../components/TreeCanvas';
+import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
@@ -18,6 +18,20 @@ interface HistItem {
 
 const MIN_P = 3;
 const MAX_P = 8;
+
+// Tabla completa siempre visible: p columnas de puntero (delgadas) + p-1
+// celdas de clave. Las celdas vacías se muestran como cajas vacías.
+const AUTO_PTR_W = 14;
+const AUTO_KEY_W = 40;
+const AUTO_H = 48;
+
+function autoTableWidth(p: number): number {
+  return p * AUTO_PTR_W + (p - 1) * AUTO_KEY_W;
+}
+
+function autoSlotX(x: number, slot: number): number {
+  return x + slot * (AUTO_PTR_W + AUTO_KEY_W) + AUTO_PTR_W / 2;
+}
 
 export function PlayAuto() {
   const [p, setP] = React.useState<number>(() => load<number>(KEYS.autoP, 4));
@@ -138,7 +152,8 @@ export function PlayAuto() {
     pushHistory(`orden p=${clamped} → reconstruido con ${keys.length} claves`);
   }
 
-  const layout = React.useMemo(() => layoutTree(tree.root), [tree.root]);
+  const layout = React.useMemo(() => layoutTree(tree.root, autoTableWidth(p)), [tree.root, p]);
+  const connected = React.useMemo(() => new Set(layout.edges.map((e) => `${e.from}:${e.slot}`)), [layout]);
   const stats = { h: height(tree.root), n: countNodes(tree.root), k: countKeys(tree.root) };
 
   return (
@@ -176,36 +191,52 @@ export function PlayAuto() {
           nodes={layout.nodes}
           edges={layout.edges}
           highlightIds={highlight}
-          renderNode={(n) => (
-            <div
-              data-node
-              className={cn(
-                'rounded-md border bg-card shadow-sm',
-                highlight.has(n.id) ? 'border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-100 dark:ring-zinc-100' : 'border-border',
-              )}
-              style={{ minHeight: NODE_HEIGHT }}
-            >
-              <div className="flex items-stretch justify-center gap-1 p-2">
-                {n.keys.map((k) => (
-                  <span
-                    key={k}
-                    className={cn(
-                      'flex h-8 min-w-8 items-center justify-center rounded border px-2 text-sm font-medium',
-                      highlight.has(n.id) ? 'border-zinc-900 dark:border-zinc-100' : 'border-input',
-                    )}
-                    style={{ minWidth: 32 }}
-                  >
-                    {k}
-                  </span>
-                ))}
+          getNodeWidth={() => autoTableWidth(p)}
+          getSlotX={(n, slot) => autoSlotX(n.x, slot)}
+          nodeHeight={AUTO_H}
+          renderNode={(n) => {
+            const hot = highlight.has(n.id);
+            const cols: string[] = [];
+            for (let s = 0; s < p; s += 1) {
+              cols.push(`${AUTO_PTR_W}px`);
+              if (s < p - 1) cols.push(`${AUTO_KEY_W}px`);
+            }
+            return (
+              <div
+                data-node
+                className={cn(
+                  'rounded-md border bg-card shadow-sm',
+                  hot ? 'border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-100 dark:ring-zinc-100' : 'border-border',
+                )}
+              >
+                <div className="grid h-12 w-full" style={{ gridTemplateColumns: cols.join(' ') }}>
+                  {Array.from({ length: p }, (_, s) => (
+                    <span key={s} className="contents">
+                      <span className={cn('flex items-center justify-center', s > 0 && 'border-l border-border')}>
+                        <span
+                          title={connected.has(`${n.id}:${s}`) ? `Puntero ${s} conectado` : `Puntero ${s} nulo`}
+                          className={cn(
+                            'size-1.5 rounded-full',
+                            connected.has(`${n.id}:${s}`) ? 'bg-zinc-700 dark:bg-zinc-300' : 'border border-zinc-300 dark:border-zinc-700',
+                          )}
+                        />
+                      </span>
+                      {s < p - 1 && (
+                        <span
+                          className={cn(
+                            'flex items-center justify-center border-l border-border text-sm font-medium',
+                            hot && n.keys[s] !== undefined && 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900',
+                          )}
+                        >
+                          {n.keys[s] ?? ''}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="flex justify-between px-2 pb-1 text-[10px] text-muted-foreground">
-                {Array.from({ length: n.keys.length + 1 }).map((_, i) => (
-                  <span key={i}>▾{i}</span>
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          }}
         />
       )}
 
@@ -249,7 +280,6 @@ export function PlayAuto() {
       </BottomToolbar>
       {/* spacer para que la toolbar flotante no tape el canvas en mobile */}
       <div className="h-2" />
-      <span className="hidden">{nodeWidth(0)}</span>
     </div>
   );
 }

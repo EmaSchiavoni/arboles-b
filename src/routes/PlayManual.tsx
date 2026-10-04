@@ -13,23 +13,22 @@ import { cn } from '../lib/utils';
 const MIN_P = 3;
 const MAX_P = 8;
 
-// Tabla de una sola fila: columnas alternadas puntero (delgada) / clave.
-// Con k claves hay 2k+1 columnas (nodo lleno: 2p-1). La columna de puntero
-// solo aloja el inicio de la flecha; las claves van una al lado de otra.
+// Tabla completa siempre visible: p columnas de puntero (delgadas) + p-1
+// celdas de clave, una al lado de otra (nodo lleno: 2p-1 columnas). La columna
+// de puntero solo aloja el inicio de la flecha. Las celdas de clave vacías se
+// editan directo; solo los primeros |claves|+1 slots aceptan punteros.
 const SLOT_COL_W = 30;
 const KEY_COL_W = 64;
 
-function manualNodeWidth(keysCount: number): number {
-  return Math.max(150, (keysCount + 1) * SLOT_COL_W + keysCount * KEY_COL_W);
+function manualNodeWidth(p: number): number {
+  return Math.max(150, p * SLOT_COL_W + (p - 1) * KEY_COL_W);
 }
 
 // Coordenada x absoluta del centro de la columna del slot (para la flecha).
-function manualSlotX(n: ManualNode, slot: number): number {
-  const k = n.keys.length;
-  const w = manualNodeWidth(k);
-  if (k === 0) return n.x + w / 2;
-  const keyW = (w - (k + 1) * SLOT_COL_W) / k;
-  return n.x + slot * (SLOT_COL_W + keyW) + SLOT_COL_W / 2;
+function manualSlotX(x: number, p: number, slot: number): number {
+  const w = manualNodeWidth(p);
+  const keyW = (w - p * SLOT_COL_W) / (p - 1);
+  return x + slot * (SLOT_COL_W + keyW) + SLOT_COL_W / 2;
 }
 
 function uid(): string {
@@ -65,7 +64,6 @@ export function PlayManual() {
   });
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
   const [result, setResult] = React.useState<ValidationResult | null>(null);
-  const [newKey, setNewKey] = React.useState<Record<string, string>>({});
   const dragRef = React.useRef<{ id: string; dx: number; dy: number } | null>(null);
 
   const { nodes, rootId, p } = draft;
@@ -123,18 +121,24 @@ export function PlayManual() {
     update((d) => ({ ...d, rootId: id }));
   }
 
-  function addKey(id: string) {
-    const raw = (newKey[id] ?? '').trim();
-    const v = Number(raw);
-    if (raw === '' || !Number.isInteger(v)) return;
+  function addKey(id: string, raw: string) {
+    const v = Number(raw.trim());
+    if (raw.trim() === '' || !Number.isInteger(v)) return;
+    const n = nodes.find((x) => x.id === id);
+    if (!n || n.keys.includes(v) || n.keys.length >= p - 1) return;
     update((d) => {
-      const n = d.nodes.find((x) => x.id === id);
-      if (!n || n.keys.includes(v)) return d;
-      n.keys = [...n.keys, v];
-      n.slots = fixSlots(n.keys, n.slots);
+      const t = d.nodes.find((x) => x.id === id);
+      if (!t || t.keys.includes(v) || t.keys.length >= d.p - 1) return d;
+      t.keys = [...t.keys, v];
+      t.slots = fixSlots(t.keys, t.slots);
       return d;
     });
-    setNewKey((s) => ({ ...s, [id]: '' }));
+  }
+
+  // Lleva el foco a la primera celda de clave vacía del nodo.
+  function focusEmptyKey(id: string) {
+    const el = document.querySelector<HTMLInputElement>(`input[data-empty-cell="${id}"]`);
+    el?.focus();
   }
 
   function removeKey(id: string, index: number) {
@@ -255,16 +259,17 @@ export function PlayManual() {
           linking={!!linking}
           errorIds={errorIds}
           onBackgroundClick={() => setLinking(null)}
-          getNodeWidth={manualNodeWidth}
-          getSlotX={manualSlotX}
+          getNodeWidth={() => manualNodeWidth(p)}
+          getSlotX={(node, slot) => manualSlotX(node.x, p, slot)}
           renderNode={(n) => {
             const isRoot = n.id === rootId;
             const isTarget = !!linking && linking.nodeId !== n.id;
             const bad = errorIds.has(n.id);
+            const full = n.keys.length >= p - 1;
             const cols: string[] = [];
-            for (let s = 0; s <= n.keys.length; s += 1) {
+            for (let s = 0; s < p; s += 1) {
               cols.push(`${SLOT_COL_W}px`);
-              if (s < n.keys.length) cols.push('minmax(0,1fr)');
+              if (s < p - 1) cols.push('minmax(0,1fr)');
             }
             return (
               <div
@@ -285,23 +290,11 @@ export function PlayManual() {
                   onPointerUp={onNodePointerUp}
                 >
                   <GripVertical className="size-3.5 shrink-0" />
-                  {n.keys.length < p - 1 ? (
-                    <span className="flex min-w-0 flex-1 items-center gap-0.5">
-                      <Input
-                        value={newKey[n.id] ?? ''}
-                        onChange={(e) => setNewKey((s) => ({ ...s, [n.id]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === 'Enter') addKey(n.id); }}
-                        inputMode="numeric"
-                        placeholder="+ clave"
-                        aria-label="Nueva clave"
-                        className="h-5 min-w-0 flex-1 px-1 text-center text-[11px]"
-                      />
-                      <button type="button" title="Agregar clave" onClick={() => addKey(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                        <Plus className="size-3" />
-                      </button>
-                    </span>
-                  ) : (
-                    <span className="min-w-0 flex-1 truncate text-center text-[10px]">{isRoot ? 'raíz' : `lleno (${p - 1})`}</span>
+                  <span className="min-w-0 flex-1 truncate text-center text-[10px]">{isRoot ? 'raíz' : 'nodo'}</span>
+                  {!full && (
+                    <button type="button" title="Ir a la primera celda vacía" onClick={() => focusEmptyKey(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <Plus className="size-3" />
+                    </button>
                   )}
                   {!isRoot && (
                     <button type="button" title="Marcar como raíz" onClick={() => setRoot(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
@@ -314,57 +307,84 @@ export function PlayManual() {
                 </div>
 
                 <div className="grid h-10 w-full" style={{ gridTemplateColumns: cols.join(' ') }}>
-                  {n.slots.map((s, slot) => (
-                    <span key={`cells-${slot}`} className="contents">
-                      <span className={cn('flex items-center justify-center', slot > 0 && 'border-l border-border')}>
-                        {s ? (
-                          <button
-                            type="button"
-                            title={`Quitar puntero ${slot}`}
-                            onClick={() => removeLink(n.id, slot)}
-                            className="flex size-5 items-center justify-center rounded-full border border-zinc-900 dark:border-zinc-100"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            title={`Crear puntero ${slot} desde aquí`}
-                            onClick={() => startLink(n.id, slot)}
-                            className={cn(
-                              'flex size-5 items-center justify-center rounded-full border border-dashed',
-                              linking?.nodeId === n.id && linking?.slot === slot
-                                ? 'border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-                                : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-600 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
-                            )}
-                          >
-                            <Plus className="size-3" />
-                          </button>
+                  {Array.from({ length: p }, (_, slot) => {
+                    const live = slot <= n.keys.length; // slots existentes: |claves|+1
+                    const linked = live ? n.slots[slot] : null;
+                    return (
+                      <span key={`cells-${slot}`} className="contents">
+                        <span className={cn('flex items-center justify-center', slot > 0 && 'border-l border-border')}>
+                          {!live ? (
+                            <span className="size-1.5 rounded-full border border-zinc-300 dark:border-zinc-700" title={`Puntero ${slot} (se habilita al agregar claves)`} />
+                          ) : linked ? (
+                            <button
+                              type="button"
+                              title={`Quitar puntero ${slot}`}
+                              onClick={() => removeLink(n.id, slot)}
+                              className="flex size-5 items-center justify-center rounded-full border border-zinc-900 dark:border-zinc-100"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              title={`Crear puntero ${slot} desde aquí`}
+                              onClick={() => startLink(n.id, slot)}
+                              className={cn(
+                                'flex size-5 items-center justify-center rounded-full border border-dashed',
+                                linking?.nodeId === n.id && linking?.slot === slot
+                                  ? 'border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                                  : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-600 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
+                              )}
+                            >
+                              <Plus className="size-3" />
+                            </button>
+                          )}
+                        </span>
+                        {slot < p - 1 && (
+                          slot < n.keys.length ? (
+                            <span className="group/key relative flex min-w-0 items-center border-l border-border">
+                              <Input
+                                defaultValue={n.keys[slot]}
+                                key={`${n.id}-${slot}-${n.keys[slot]}`}
+                                inputMode="numeric"
+                                aria-label={`Clave ${slot + 1}`}
+                                className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
+                                onBlur={(e) => editKey(n.id, slot, e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                              />
+                              <button
+                                type="button"
+                                title="Quitar clave"
+                                onClick={() => removeKey(n.id, slot)}
+                                className="absolute -top-0.5 right-0 rounded-full bg-card p-0.5 text-muted-foreground hover:text-foreground max-sm:opacity-100 sm:opacity-0 sm:group-hover/key:opacity-100"
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </span>
+                          ) : (
+                            <span className="flex min-w-0 items-center border-l border-border">
+                              <Input
+                                key={`${n.id}-empty-${slot}`}
+                                data-empty-cell={n.id}
+                                inputMode="numeric"
+                                placeholder="·"
+                                aria-label={`Clave vacía ${slot + 1}`}
+                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm text-muted-foreground shadow-none placeholder:text-zinc-300 focus-visible:ring-0 dark:placeholder:text-zinc-700"
+                                onBlur={(e) => { addKey(n.id, e.target.value); e.target.value = ''; }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    addKey(n.id, (e.target as HTMLInputElement).value);
+                                    (e.target as HTMLInputElement).value = '';
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                }}
+                              />
+                            </span>
+                          )
                         )}
                       </span>
-                      {slot < n.keys.length && (
-                        <span className="group/key relative flex min-w-0 items-center border-l border-border">
-                          <Input
-                            defaultValue={n.keys[slot]}
-                            key={`${n.id}-${slot}-${n.keys[slot]}`}
-                            inputMode="numeric"
-                            aria-label={`Clave ${slot + 1}`}
-                            className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
-                            onBlur={(e) => editKey(n.id, slot, e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                          />
-                          <button
-                            type="button"
-                            title="Quitar clave"
-                            onClick={() => removeKey(n.id, slot)}
-                            className="absolute -top-0.5 right-0 rounded-full bg-card p-0.5 text-muted-foreground hover:text-foreground max-sm:opacity-100 sm:opacity-0 sm:group-hover/key:opacity-100"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </span>
-                      )}
-                    </span>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {isTarget && (

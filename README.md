@@ -8,11 +8,11 @@ En este proyecto, el orden `p` es la cantidad máxima de punteros de árbol por 
 
 ## Playground automático
 
-Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, generar claves aleatorias, vaciar el árbol y consultar el historial de operaciones. El camino de búsqueda se resalta en el canvas. El panel superior muestra el máximo y mínimo de claves por nodo, la altura, la cantidad de nodos y la cantidad total de claves. Al cambiar el orden, el árbol se reconstruye reinsertando las claves existentes. El estado se conserva en `localStorage`.
+Permite configurar el orden `p`, insertar, eliminar y buscar claves numéricas, generar claves aleatorias, vaciar el árbol y consultar el historial de operaciones. Cada nodo se muestra como una tabla completa de `2p - 1` columnas (punteros delgados y claves), con las celdas vacías siempre visibles. El camino de búsqueda se resalta en el canvas. El panel superior muestra el máximo y mínimo de claves por nodo, la altura, la cantidad de nodos y la cantidad total de claves. Al cambiar el orden, el árbol se reconstruye reinsertando las claves existentes. El estado se conserva en `localStorage`.
 
 ## Editor manual
 
-Editor libre para construir el árbol a mano: crear y eliminar nodos, editar claves, arrastrar nodos por el canvas, marcar la raíz y conectar punteros por slots (`|claves| + 1` por nodo). Cada nodo es una tabla de una sola fila con columnas alternadas de puntero (delgadas) y clave, una al lado de la otra. En escritorio, el botón `+` aparece al pasar el cursor sobre un slot; en móvil está siempre visible. Al iniciar una conexión se resaltan los destinos posibles; la conexión se cancela con `Esc` o tocando el fondo del canvas. El botón Validar verifica todas las reglas del orden `p` configurado y lista los errores, resaltando los nodos afectados. El borrador se conserva en `localStorage`.
+Editor libre para construir el árbol a mano: crear y eliminar nodos, editar claves, arrastrar nodos por el canvas, marcar la raíz y conectar punteros por slots (`|claves| + 1` por nodo). Cada nodo es una tabla completa de `2p - 1` columnas siempre visible, con las celdas de clave vacías listas para escribir directo en ellas (sin input de alta: el botón `+` del nodo lleva el foco a la primera celda vacía y se oculta cuando el nodo está lleno). En escritorio, el botón `+` aparece al pasar el cursor sobre un slot; en móvil está siempre visible. Al iniciar una conexión se resaltan los destinos posibles; la conexión se cancela con `Esc` o tocando el fondo del canvas. El botón Validar verifica todas las reglas del orden `p` configurado y lista los errores, resaltando los nodos afectados. El borrador se conserva en `localStorage`.
 
 ## Validación
 

@@ -15,7 +15,7 @@ export const NODE_H = 64;
 export const LEVEL_GAP = 90;
 export const SIBLING_GAP = 24;
 
-export function layoutTree(root: BNode | null): { nodes: PlacedNode[]; edges: { from: string; to: string; slot: number }[] } {
+export function layoutTree(root: BNode | null, nodeW: number = NODE_W): { nodes: PlacedNode[]; edges: { from: string; to: string; slot: number }[] } {
   if (!root) return { nodes: [], edges: [] };
   const nodes: PlacedNode[] = [];
   const edges: { from: string; to: string; slot: number }[] = [];
@@ -40,7 +40,7 @@ export function layoutTree(root: BNode | null): { nodes: PlacedNode[]; edges: { 
     nodes.push({
       id: n.id,
       keys: [...n.keys],
-      x: ux * (NODE_W + SIBLING_GAP),
+      x: ux * (nodeW + SIBLING_GAP),
       y: depth * (NODE_H + LEVEL_GAP),
       depth,
     });
