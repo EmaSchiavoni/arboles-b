@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Network, PencilRuler } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
+import { Button } from './components/ui/button';
 import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { PlayAuto } from './routes/PlayAuto';
 import { PlayManual } from './routes/PlayManual';
@@ -17,38 +17,22 @@ export default function App() {
     }
   }, [tab]);
 
+  const inAuto = tab === 'auto';
+
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="z-30 shrink-0 border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900">
-              <Network className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold leading-tight">Árboles B · Playground</h1>
-              <p className="truncate text-xs text-muted-foreground">orden p = punteros por nodo</p>
-            </div>
-          </div>
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="auto">
-                <span className="hidden sm:inline">Automático</span>
-                <span className="sm:hidden">Auto</span>
-              </TabsTrigger>
-              <TabsTrigger value="manual">
-                <span className="hidden sm:inline">Manual</span>
-                <span className="sm:hidden flex items-center gap-1"><PencilRuler className="size-3.5" />Manual</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <ThemeToggle dark={dark} onToggle={toggle} />
-        </div>
-      </header>
-
       <main className="min-h-0 flex-1">
-        {tab === 'auto' ? <PlayAuto key="auto" /> : <PlayManual key="manual" />}
+        {inAuto ? <PlayAuto key="auto" /> : <PlayManual key="manual" />}
       </main>
+
+      <div className="fixed right-3 top-3 z-40 flex items-center gap-1 rounded-full border bg-card/95 p-1 shadow-lg backdrop-blur">
+        <Button size="sm" variant="ghost" onClick={() => setTab(inAuto ? 'manual' : 'auto')} className="rounded-full">
+          {inAuto ? <PencilRuler /> : <Network />}
+          <span className="hidden sm:inline">{inAuto ? 'Modo manual' : 'Modo automático'}</span>
+          <span className="sm:hidden">{inAuto ? 'Manual' : 'Auto'}</span>
+        </Button>
+        <ThemeToggle dark={dark} onToggle={toggle} />
+      </div>
     </div>
   );
 }

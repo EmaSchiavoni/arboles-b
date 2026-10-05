@@ -277,7 +277,7 @@ export function PlayManual() {
               <div
                 data-node
                 className={cn(
-                  'rounded-md border bg-card shadow-sm',
+                  'rounded-2xl border bg-card shadow-sm',
                   bad ? 'border-red-500 ring-1 ring-red-500' : isRoot ? 'border-zinc-900 dark:border-zinc-100' : 'border-border',
                   isTarget && 'ring-2 ring-dashed ring-zinc-500',
                 )}
@@ -298,16 +298,16 @@ export function PlayManual() {
                     <span className="min-w-0 flex-1" />
                   )}
                   {!full && (
-                    <button type="button" title="Ir a la primera celda vacía" onClick={() => focusEmptyKey(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <button type="button" title="Ir a la primera celda vacía" onClick={() => focusEmptyKey(n.id)} className="shrink-0 rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Plus className="size-3" />
                     </button>
                   )}
                   {!isRoot && (
-                    <button type="button" title="Marcar como raíz" onClick={() => setRoot(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <button type="button" title="Marcar como raíz" onClick={() => setRoot(n.id)} className="shrink-0 rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Crown className="size-3" />
                     </button>
                   )}
-                  <button type="button" title="Eliminar nodo" onClick={() => deleteNode(n.id)} className="shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <button type="button" title="Eliminar nodo" onClick={() => deleteNode(n.id)} className="shrink-0 rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                     <Trash2 className="size-3" />
                   </button>
                 </div>
@@ -408,7 +408,7 @@ export function PlayManual() {
           />
           {linking && (
             <div className="pointer-events-none absolute inset-x-2 top-2 z-10">
-              <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                <p className="mx-auto w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
                 Tocá el icono <ArrowDownToLine className="inline size-3.5" /> del nodo destino · Esc o fondo para cancelar
               </p>
             </div>
@@ -437,7 +437,7 @@ export function PlayManual() {
             </div>
             <ul className="space-y-1.5">
               {result.issues.map((it, i) => (
-                <li key={i} className="rounded-md border border-red-200 px-3 py-2 text-sm text-muted-foreground dark:border-red-900">
+                <li key={i} className="rounded-2xl border border-red-200 px-3 py-2 text-sm text-muted-foreground dark:border-red-900">
                   · {it.message}
                 </li>
               ))}

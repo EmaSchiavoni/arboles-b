@@ -20,7 +20,7 @@ El validador comprueba: claves ordenadas y sin duplicados (dentro de cada nodo y
 
 ## Interfaz
 
-Componentes estilo shadcn con Tailwind y paleta monocromática (zinc). Soporta tema claro y oscuro con persistencia. Diseño mobile-first con pestañas para cambiar de playground. El diagrama ocupa toda la pantalla, sin bordes; los mensajes y el historial o resultado de la validación aparecen como paneles flotantes sobre él. Las barras de herramientas son flotantes, están fijadas abajo, centradas y con ancho mínimo.
+Componentes estilo shadcn con Tailwind, paleta monocromática (zinc) y radios completamente redondeados. Soporta tema claro y oscuro con persistencia. Diseño mobile-first sin barra superior: el cambio de modo y el tema van en botones flotantes arriba a la derecha. El diagrama ocupa toda la pantalla, sin bordes; los mensajes y el historial o resultado de la validación aparecen como paneles flotantes sobre él. Las barras de herramientas son flotantes, están fijadas abajo, centradas y con ancho mínimo.
 
 ## Uso
 

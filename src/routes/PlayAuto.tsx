@@ -215,7 +215,7 @@ export function PlayAuto() {
               <div
                 data-node
                 className={cn(
-                  'rounded-md border bg-card shadow-sm',
+                  'rounded-2xl border bg-card shadow-sm',
                   hot ? 'border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-100 dark:ring-zinc-100' : 'border-border',
                 )}
               >
@@ -251,7 +251,7 @@ export function PlayAuto() {
           {(message || showHistory) && (
             <div className="pointer-events-none absolute inset-x-2 top-2 z-10 space-y-2">
               {message && (
-                <p className="mx-auto w-max max-w-full rounded bg-zinc-900/85 px-2 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                <p className="mx-auto w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
                   {message}
                 </p>
               )}
@@ -264,7 +264,7 @@ export function PlayAuto() {
                     ) : (
                       <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
                         {history.map((h) => (
-                          <li key={h.id} className="rounded border px-2 py-1">· {h.text}</li>
+                          <li key={h.id} className="rounded-2xl border px-2 py-1">· {h.text}</li>
                         ))}
                       </ul>
                     )}

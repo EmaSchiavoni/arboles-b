@@ -20,8 +20,8 @@ export function Sheet({ open, onOpenChange, title, children }: SheetProps) {
         <Dialog.Content
           className={cn(
             'animate-sheet-up fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-auto',
-            'rounded-t-lg border border-b-0 bg-card shadow-lg focus:outline-none',
-            'sm:bottom-6 sm:mx-auto sm:w-full sm:max-w-lg sm:rounded-lg sm:border-b',
+            'rounded-t-3xl border border-b-0 bg-card shadow-lg focus:outline-none',
+            'sm:bottom-6 sm:mx-auto sm:w-full sm:max-w-lg sm:rounded-3xl sm:border-b',
           )}
         >
           <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -30,7 +30,7 @@ export function Sheet({ open, onOpenChange, title, children }: SheetProps) {
               <button
                 type="button"
                 aria-label="Cerrar"
-                className="rounded-md p-1 text-muted-foreground hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+                className="rounded-full p-1 text-muted-foreground hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
               >
                 <X className="size-4" />
               </button>
