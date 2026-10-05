@@ -2,6 +2,8 @@
 
 Aplicación web estática para experimentar con la estructura de datos Árbol B. Incluye dos playgrounds: uno automático que genera y mantiene el árbol al insertar, eliminar y buscar claves; y un editor manual para construir el árbol a mano y validar si cumple las reglas.
 
+Demo en línea: https://emaschiavoni.github.io/arboles-b/ (despliegue automático a GitHub Pages con Actions en cada push a `main`).
+
 ## Definición de orden
 
 En este proyecto, el orden `p` es la cantidad máxima de punteros de árbol por nodo. Cada nodo contiene como máximo `p - 1` claves. Los nodos que no son raíz contienen como mínimo `ceil(p/2) - 1` claves (es decir, `ceil(p/2)` punteros si no son hojas). La raíz contiene entre 1 y `p - 1` claves si es el único nodo, o entre 2 y `p` punteros si tiene hijos. Cada nodo tiene 0 hijos (hoja, con todos sus punteros nulos) o exactamente `|claves| + 1` hijos. Todas las hojas se encuentran a la misma profundidad. Las claves están ordenadas de forma ascendente y no hay duplicados. Cada hijo `i` contiene claves dentro del rango `(claves[i-1], claves[i])`.
