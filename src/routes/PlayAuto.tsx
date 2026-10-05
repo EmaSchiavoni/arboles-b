@@ -215,7 +215,7 @@ export function PlayAuto() {
               <div
                 data-node
                 className={cn(
-                  'rounded-2xl border bg-card shadow-sm',
+                  'rounded-md border bg-card shadow-sm',
                   hot ? 'border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-100 dark:ring-zinc-100' : 'border-border',
                 )}
               >

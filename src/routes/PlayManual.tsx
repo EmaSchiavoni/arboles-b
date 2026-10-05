@@ -277,7 +277,7 @@ export function PlayManual() {
               <div
                 data-node
                 className={cn(
-                  'rounded-2xl border bg-card shadow-sm',
+                  'rounded-md border bg-card shadow-sm',
                   bad ? 'border-red-500 ring-1 ring-red-500' : isRoot ? 'border-zinc-900 dark:border-zinc-100' : 'border-border',
                   isTarget && 'ring-2 ring-dashed ring-zinc-500',
                 )}
