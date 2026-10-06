@@ -62,9 +62,31 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
     applyPan({ k: k2, x: sx - (sx - cur.x) * r, y: sy - (sy - cur.y) * r });
   }
 
-  function resetZoom() {
-    const cur = panRef.current;
-    if (cur.k !== 1) applyPan({ ...cur, k: 1 });
+  // Borrador del input de zoom: null = mostrar el valor real.
+  const [zoomDraft, setZoomDraft] = React.useState<string | null>(null);
+  const cancelBlur = React.useRef(false);
+
+  // Aplica el % escrito (centrado). Ante valor inválido o fuera de rango
+  // (25-300) se vuelve al valor anterior.
+  function commitZoom(raw: string) {
+    if (cancelBlur.current) {
+      cancelBlur.current = false;
+      setZoomDraft(null);
+      return;
+    }
+    const num = Number(raw.replace('%', '').trim());
+    if (raw.trim() === '' || !Number.isFinite(num)) {
+      setZoomDraft(null);
+      return;
+    }
+    const target = Math.round(num);
+    if (target < MIN_K * 100 || target > MAX_K * 100) {
+      setZoomDraft(null);
+      return;
+    }
+    const r = ref.current?.getBoundingClientRect();
+    zoomAt(r ? r.width / 2 : 200, r ? r.height / 2 : 200, target / 100 / panRef.current.k);
+    setZoomDraft(null);
   }
 
   function local(e: React.PointerEvent | { clientX: number; clientY: number }) {
@@ -239,17 +261,27 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        title="Restablecer zoom (100 %)"
-        onClick={(e) => {
-          e.stopPropagation();
-          resetZoom();
-        }}
-        className="absolute bottom-2 right-2 z-10 rounded-full border bg-card/95 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground shadow-sm backdrop-blur"
+      <span
+        title="Zoom actual en % (Enter para aplicar, Esc para cancelar)"
+        className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 rounded-full border bg-card/95 px-2 py-0.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur"
       >
-        {Math.round(pan.k * 100)} %
-      </button>
+        <input
+          value={zoomDraft ?? String(Math.round(pan.k * 100))}
+          onChange={(e) => setZoomDraft(e.target.value)}
+          onBlur={(e) => commitZoom(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            else if (e.key === 'Escape') {
+              cancelBlur.current = true;
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          inputMode="numeric"
+          aria-label="Nivel de zoom en porcentaje"
+          className="w-9 bg-transparent text-center tabular-nums focus:outline-none"
+        />
+        <span>%</span>
+      </span>
     </div>
   );
 }
