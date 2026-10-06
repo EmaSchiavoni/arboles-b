@@ -2,7 +2,7 @@
 
 Aplicación web estática para experimentar con la estructura de datos Árbol B. Incluye dos playgrounds: uno automático que genera y mantiene el árbol al insertar, eliminar y buscar claves; y un editor manual para construir el árbol a mano y validar si cumple las reglas.
 
-Demo en línea: https://emaschiavoni.github.io/arboles-b/ (despliegue automático a GitHub Pages con Actions en cada push a `main`).
+Demo en línea: https://arbolesb.schiavoni.dev/ (despliegue automático a GitHub Pages con Actions en cada push a `main`).
 
 ## Definición de orden
 

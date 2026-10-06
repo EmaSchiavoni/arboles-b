@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Base para GitHub Pages (project site: https://<usuario>.github.io/arboles-b/).
-  base: '/arboles-b/',
+  // Base raíz: el sitio se sirve en el dominio propio (arbolesb.schiavoni.dev).
+  base: '/',
   plugins: [react()],
 })
