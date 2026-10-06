@@ -39,29 +39,135 @@ interface Props<T extends CanvasNode> {
 export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
+  const panRef = React.useRef(pan);
   const drag = React.useRef<{ sx: number; sy: number; px: number; py: number; active: boolean }>({ sx: 0, sy: 0, px: 0, py: 0, active: false });
+  const pointers = React.useRef(new Map<number, { x: number; y: number; node: boolean }>());
+  const pinchStart = React.useRef<{ d: number } | null>(null);
 
-  const byId = React.useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const MIN_K = 0.25;
+  const MAX_K = 3;
+  const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
+
+  function applyPan(next: { x: number; y: number; k: number }) {
+    panRef.current = next;
+    setPan(next);
+  }
+
+  // Zoom que mantiene fijo el punto (sx, sy) relativo al contenedor.
+  function zoomAt(sx: number, sy: number, factor: number) {
+    const cur = panRef.current;
+    const k2 = clampK(cur.k * factor);
+    if (k2 === cur.k) return;
+    const r = k2 / cur.k;
+    applyPan({ k: k2, x: sx - (sx - cur.x) * r, y: sy - (sy - cur.y) * r });
+  }
+
+  function resetZoom() {
+    const cur = panRef.current;
+    if (cur.k !== 1) applyPan({ ...cur, k: 1 });
+  }
+
+  function local(e: React.PointerEvent | { clientX: number; clientY: number }) {
+    const r = ref.current?.getBoundingClientRect();
+    return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
+  }
 
   function onPointerDown(e: React.PointerEvent) {
-    if ((e.target as HTMLElement).closest('[data-node]')) return;
-    drag.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y, active: true };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const p = local(e);
+    const onNode = !!(e.target as HTMLElement).closest('[data-node]');
+    pointers.current.set(e.pointerId, { ...p, node: onNode });
+    if (pointers.current.size === 2) {
+      // Pinch solo si ambos dedos están sobre el fondo (no sobre un nodo).
+      const pts = [...pointers.current.values()];
+      if (!pts.some((q) => q.node)) {
+        const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        pinchStart.current = { d };
+        drag.current.active = false;
+      }
+    }
+    if (onNode) return;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // noop
+    }
+    const cur = panRef.current;
+    drag.current = { sx: e.clientX, sy: e.clientY, px: cur.x, py: cur.y, active: pinchStart.current === null };
   }
   function onPointerMove(e: React.PointerEvent) {
+    const m = pointers.current.get(e.pointerId);
+    if (m) {
+      const p = local(e);
+      m.x = p.x;
+      m.y = p.y;
+    }
+    const pts = [...pointers.current.values()];
+    if (pinchStart.current && pointers.current.size === 2 && !pts.some((q) => q.node)) {
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const prev = pinchStart.current.d;
+      if (d > 0 && prev > 0) {
+        const mx = (pts[0].x + pts[1].x) / 2;
+        const my = (pts[0].y + pts[1].y) / 2;
+        zoomAt(mx, my, d / prev);
+      }
+      pinchStart.current = { d };
+      return;
+    }
     if (!drag.current.active) return;
-    setPan((p) => ({ ...p, x: drag.current.px + (e.clientX - drag.current.sx), y: drag.current.py + (e.clientY - drag.current.sy) }));
+    applyPan({ ...panRef.current, x: drag.current.px + (e.clientX - drag.current.sx), y: drag.current.py + (e.clientY - drag.current.sy) });
   }
-  function onPointerUp() {
-    drag.current.active = false;
+  function endPointer(e: React.PointerEvent) {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinchStart.current = null;
+    if (pointers.current.size === 0) drag.current.active = false;
   }
 
-  function onWheel(e: React.WheelEvent) {
-    if (!e.ctrlKey && Math.abs(e.deltaY) < 60 && e.deltaX === 0) {
-      // scroll vertical normal del contenedor: lo dejamos pasar
+  // Rueda: sin Ctrl mueve el canvas; con Ctrl (o Cmd) hace zoom sobre el cursor.
+  // Listener no-pasivo para poder frenar el zoom de página del navegador.
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const target: HTMLDivElement = el;
+    function onWheelNative(e: WheelEvent) {
+      if (!e.ctrlKey && !e.metaKey) {
+        const cur = panRef.current;
+        const next = { ...cur, x: cur.x - e.deltaX * 0.5, y: cur.y - e.deltaY * 0.5 };
+        panRef.current = next;
+        setPan(next);
+        return;
+      }
+      e.preventDefault();
+      const r = target.getBoundingClientRect();
+      const cur = panRef.current;
+      const k2 = Math.min(MAX_K, Math.max(MIN_K, cur.k * Math.exp(-e.deltaY * 0.002)));
+      if (k2 === cur.k) return;
+      const sx = e.clientX - r.left;
+      const sy = e.clientY - r.top;
+      const ratio = k2 / cur.k;
+      const next = { k: k2, x: sx - (sx - cur.x) * ratio, y: sy - (sy - cur.y) * ratio };
+      panRef.current = next;
+      setPan(next);
     }
-    setPan((p) => ({ ...p, y: p.y - e.deltaY * 0.5, x: p.x - e.deltaX * 0.5 }));
-  }
+    target.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => target.removeEventListener('wheel', onWheelNative);
+  }, []);
+
+  // Teclado: Ctrl/Cmd + (+/-) zoom centrado, Ctrl/Cmd + 0 restablece.
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key !== '+' && e.key !== '=' && e.key !== '-' && e.key !== '0') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      const r = ref.current?.getBoundingClientRect();
+      zoomAt(r ? r.width / 2 : 200, r ? r.height / 2 : 200, e.key === '-' ? 1 / 1.25 : e.key === '0' ? 1 / panRef.current.k : 1.25);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const byId = React.useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   const widthOf = getNodeWidth ?? nodeWidth;
   const heightOf = nodeHeight ?? NODE_HEIGHT;
@@ -85,8 +191,8 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
       ref={ref}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onWheel={onWheel}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-node]')) return;
         onBackgroundClick?.();
@@ -133,6 +239,17 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
           </div>
         ))}
       </div>
+      <button
+        type="button"
+        title="Restablecer zoom (100 %)"
+        onClick={(e) => {
+          e.stopPropagation();
+          resetZoom();
+        }}
+        className="absolute bottom-2 right-2 z-10 rounded-full border bg-card/95 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground shadow-sm backdrop-blur"
+      >
+        {Math.round(pan.k * 100)} %
+      </button>
     </div>
   );
 }
