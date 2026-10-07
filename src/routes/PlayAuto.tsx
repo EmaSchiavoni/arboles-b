@@ -9,6 +9,7 @@ import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, insertKeyTracked, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 
 interface HistItem {
@@ -66,8 +67,12 @@ export function PlayAuto() {
   }
 
   function parseKey(): number | null {
+    if (keyInput.trim() === '') {
+      toast('Debe ingresar un valor en el campo clave antes de realizar esta operación.');
+      return null;
+    }
     const v = Number(keyInput.trim());
-    if (keyInput.trim() === '' || !Number.isInteger(v)) {
+    if (!Number.isInteger(v)) {
       setMessage('Ingresá un número entero.');
       return null;
     }
@@ -277,23 +282,27 @@ export function PlayAuto() {
       )}
 
       <BottomToolbar>
-        <Input
-          value={keyInput}
-          onChange={(e) => setKeyInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') doInsert(); }}
-          inputMode="numeric"
-          placeholder="Clave…"
-          aria-label="Clave numérica"
-          className="w-24"
-        />
-        <Button size="sm" onClick={doInsert}><Plus />Insertar</Button>
-        <Button size="sm" variant="secondary" onClick={doDelete}><Trash2 />Eliminar</Button>
-        <Button size="sm" variant="outline" onClick={doSearch}><Search />Buscar</Button>
-        <Button size="sm" variant="ghost" onClick={doRandom} title="Insertar clave aleatoria"><Dices />Azar</Button>
-        <Button size="sm" variant="ghost" onClick={doClear} title="Vaciar árbol"><Eraser /></Button>
-        <Button size="sm" variant="outline" onClick={() => setShowHistory((s) => !s)}>
-          {showHistory ? 'Ocultar' : 'Historial'}
-        </Button>
+        <div className="flex items-center justify-center gap-2 max-sm:w-full">
+          <Input
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') doInsert(); }}
+            inputMode="numeric"
+            placeholder="Clave…"
+            aria-label="Clave numérica"
+            className="w-24"
+          />
+          <Button size="sm" onClick={doInsert} title="Insertar" aria-label="Insertar"><Plus /></Button>
+          <Button size="sm" variant="secondary" onClick={doDelete} title="Eliminar" aria-label="Eliminar"><Trash2 /></Button>
+          <Button size="sm" variant="outline" onClick={doSearch} title="Buscar" aria-label="Buscar"><Search /></Button>
+        </div>
+        <div className="flex items-center justify-center gap-2 max-sm:w-full">
+          <Button size="sm" variant="ghost" onClick={doRandom} title="Insertar clave aleatoria"><Dices />Azar</Button>
+          <Button size="sm" variant="ghost" onClick={doClear} title="Vaciar árbol"><Eraser />Vaciar</Button>
+          <Button size="sm" variant="outline" onClick={() => setShowHistory((s) => !s)}>
+            {showHistory ? 'Ocultar' : 'Historial'}
+          </Button>
+        </div>
       </BottomToolbar>
     </div>
   );
