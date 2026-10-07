@@ -66,6 +66,27 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
   const [zoomDraft, setZoomDraft] = React.useState<string | null>(null);
   const cancelBlur = React.useRef(false);
 
+  // Indicador transitorio (mobile): se muestra 6 s desde el último cambio
+  // de zoom, con debounce (cada cambio reinicia el conteo). En mobile el
+  // indicador fijo queda detrás de la toolbar, así que se muestra debajo
+  // de los botones flotantes superiores.
+  const [flashZoom, setFlashZoom] = React.useState(false);
+  const flashTimer = React.useRef<number | null>(null);
+  const prevK = React.useRef(1);
+  React.useEffect(() => {
+    if (pan.k === prevK.current) return;
+    prevK.current = pan.k;
+    setFlashZoom(true);
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashZoom(false), 6000);
+  }, [pan.k]);
+  React.useEffect(
+    () => () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
   // Aplica el % escrito (centrado). Ante valor inválido o fuera de rango
   // (25-300) se vuelve al valor anterior.
   function commitZoom(raw: string) {
@@ -263,7 +284,7 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
       </div>
       <span
         title="Zoom actual en % (Enter para aplicar, Esc para cancelar)"
-        className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 rounded-full border bg-card/95 px-2 py-0.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur"
+        className="absolute bottom-2 right-2 z-10 hidden items-center gap-0.5 rounded-full border bg-card/95 px-2 py-0.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:flex"
       >
         <input
           value={zoomDraft ?? String(Math.round(pan.k * 100))}
@@ -282,6 +303,11 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
         />
         <span>%</span>
       </span>
+      {flashZoom && (
+        <div className="fixed right-3 top-[60px] z-40 rounded-full border bg-card/95 px-2.5 py-1 text-xs tabular-nums text-muted-foreground shadow-lg backdrop-blur sm:hidden">
+          {Math.round(pan.k * 100)} %
+        </div>
+      )}
     </div>
   );
 }
