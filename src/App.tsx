@@ -28,8 +28,8 @@ export default function App() {
       <div className="fixed right-3 top-3 z-40 flex items-center gap-1 rounded-full border bg-card/95 p-1 shadow-lg backdrop-blur">
         <Button size="sm" variant="ghost" onClick={() => setTab(inAuto ? 'manual' : 'auto')} className="rounded-full">
           {inAuto ? <PencilRuler /> : <Network />}
-          <span className="hidden sm:inline">{inAuto ? 'Modo manual' : 'Modo automático'}</span>
-          <span className="sm:hidden">{inAuto ? 'Manual' : 'Auto'}</span>
+          <span className="hidden sm:inline">{inAuto ? 'Ir a modo manual' : 'Ir a modo automático'}</span>
+          <span className="sm:hidden">{inAuto ? 'Ir a manual' : 'Ir a automático'}</span>
         </Button>
         <ThemeToggle dark={dark} onToggle={toggle} />
       </div>

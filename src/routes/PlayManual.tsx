@@ -223,7 +223,7 @@ export function PlayManual() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex max-w-[calc(100vw-145px)] shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
+      <div className="flex max-w-[calc(100vw-190px)] shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
         <Badge>orden p = {p}</Badge>
         <Badge variant="secondary">máx {p - 1} claves</Badge>
         <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
