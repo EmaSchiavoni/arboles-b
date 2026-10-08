@@ -284,7 +284,7 @@ export function PlayAuto() {
       )}
 
       <BottomToolbar>
-        <div className="flex items-center justify-center gap-2 max-sm:w-full">
+        <div className="flex items-center justify-center gap-2 max-[510px]:w-full">
           <Input
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
@@ -294,11 +294,11 @@ export function PlayAuto() {
             aria-label="Clave numérica"
             className="w-24"
           />
-          <Button size="sm" onClick={doInsert} title="Insertar" aria-label="Insertar"><Plus /></Button>
-          <Button size="sm" variant="secondary" onClick={doDelete} title="Eliminar" aria-label="Eliminar"><Trash2 /></Button>
-          <Button size="sm" variant="outline" onClick={doSearch} title="Buscar" aria-label="Buscar"><Search /></Button>
+          <Button size="sm" onClick={doInsert} title="Insertar" aria-label="Insertar" className="px-2"><Plus /></Button>
+          <Button size="sm" variant="secondary" onClick={doDelete} title="Eliminar" aria-label="Eliminar" className="px-2"><Trash2 /></Button>
+          <Button size="sm" variant="outline" onClick={doSearch} title="Buscar" aria-label="Buscar" className="px-2"><Search /></Button>
         </div>
-        <div className="flex items-center justify-center gap-2 max-sm:w-full">
+        <div className="flex items-center justify-center gap-2 max-[510px]:w-full">
           <Button size="sm" variant="ghost" onClick={doRandom} title="Insertar clave aleatoria"><Dices />Azar</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirmClear(true)} title="Vaciar árbol"><Eraser />Vaciar</Button>
           <Button size="sm" variant="outline" onClick={() => setShowHistory((s) => !s)}>
