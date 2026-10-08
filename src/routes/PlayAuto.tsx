@@ -10,6 +10,7 @@ import { contains, countKeys, countNodes, createTree, deleteKey, height, insertK
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
 
 interface HistItem {
@@ -47,6 +48,7 @@ export function PlayAuto() {
   const [lastKey, setLastKey] = React.useState<number | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
+  const [confirmClear, setConfirmClear] = React.useState(false);
 
   React.useEffect(() => {
     save(KEYS.autoP, p);
@@ -298,12 +300,24 @@ export function PlayAuto() {
         </div>
         <div className="flex items-center justify-center gap-2 max-sm:w-full">
           <Button size="sm" variant="ghost" onClick={doRandom} title="Insertar clave aleatoria"><Dices />Azar</Button>
-          <Button size="sm" variant="ghost" onClick={doClear} title="Vaciar árbol"><Eraser />Vaciar</Button>
+          <Button size="sm" variant="ghost" onClick={() => setConfirmClear(true)} title="Vaciar árbol"><Eraser />Vaciar</Button>
           <Button size="sm" variant="outline" onClick={() => setShowHistory((s) => !s)}>
             {showHistory ? 'Ocultar' : 'Historial'}
           </Button>
         </div>
       </BottomToolbar>
+
+      <ConfirmDialog
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title="Vaciar árbol"
+        description="Se eliminarán todas las claves del árbol. Esta acción no se puede deshacer."
+        confirmLabel="Vaciar"
+        onConfirm={() => {
+          doClear();
+          setConfirmClear(false);
+        }}
+      />
     </div>
   );
 }
