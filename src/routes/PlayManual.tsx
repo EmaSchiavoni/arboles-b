@@ -43,10 +43,10 @@ interface Draft {
 }
 
 function seed(): Draft {
-  // Con margen desde el origen para poder mover los nodos en todas direcciones.
-  const a: ManualNode = { id: uid(), keys: [10, 20], slots: [null, null, null], x: 160, y: 100 };
-  const b: ManualNode = { id: uid(), keys: [5], slots: [null, null], x: 40, y: 320 };
-  const c: ManualNode = { id: uid(), keys: [15], slots: [null, null], x: 420, y: 320 };
+  // Lejos del origen para poder mover los nodos en todas direcciones.
+  const a: ManualNode = { id: uid(), keys: [10, 20], slots: [null, null, null], x: 340, y: 220 };
+  const b: ManualNode = { id: uid(), keys: [5], slots: [null, null], x: 120, y: 460 };
+  const c: ManualNode = { id: uid(), keys: [15], slots: [null, null], x: 620, y: 460 };
   a.slots = [b.id, c.id, null];
   return { nodes: [a, b, c], rootId: a.id, p: 4 };
 }
@@ -70,6 +70,16 @@ export function PlayManual() {
   const dragRef = React.useRef<{ id: string; dx: number; dy: number } | null>(null);
 
   const { nodes, rootId, p } = draft;
+
+  // Centroide de los nodos al abrir (una sola vez): el canvas centra la
+  // vista ahí para que los nodos aparezcan centrados en su nueva posición.
+  const [initialCenter] = React.useState<{ x: number; y: number } | null>(() => {
+    if (draft.nodes.length === 0) return null;
+    const w = manualNodeWidth(draft.p);
+    const cx = draft.nodes.reduce((a, n) => a + n.x + w / 2, 0) / draft.nodes.length;
+    const cy = draft.nodes.reduce((a, n) => a + n.y + 32, 0) / draft.nodes.length;
+    return { x: cx, y: cy };
+  });
 
   React.useEffect(() => {
     save(KEYS.manual, draft);
@@ -103,8 +113,8 @@ export function PlayManual() {
         keys: [],
         slots: [null],
         // Lejos del origen para poder moverlo hacia la izquierda y arriba.
-        x: 200 + (d.nodes.length % 4) * 160,
-        y: 160 + Math.floor(d.nodes.length / 4) * 180,
+        x: 420 + (d.nodes.length % 4) * 160,
+        y: 340 + Math.floor(d.nodes.length / 4) * 180,
       };
       d.nodes.push(n);
       if (!d.rootId) d.rootId = n.id;
@@ -265,6 +275,7 @@ export function PlayManual() {
           onBackgroundClick={() => setLinking(null)}
           getNodeWidth={() => manualNodeWidth(p)}
           getSlotX={(node, slot) => manualSlotX(node.x, p, slot)}
+          initialCenter={initialCenter}
           renderNode={(n) => {
             const isRoot = n.id === rootId;
             const isTarget = !!linking && linking.nodeId !== n.id;

@@ -34,9 +34,11 @@ interface Props<T extends CanvasNode> {
   getSlotX?: (node: T, slot: number) => number;
   // Alto del nodo (de dónde sale la flecha). Por defecto NODE_HEIGHT.
   nodeHeight?: number;
+  // Punto virtual a centrar en el contenedor al montar (una sola vez).
+  initialCenter?: { x: number; y: number } | null;
 }
 
-export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight }: Props<T>) {
+export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight, initialCenter }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
   const panRef = React.useRef(pan);
@@ -52,6 +54,18 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
     panRef.current = next;
     setPan(next);
   }
+
+  // Centrado inicial del punto virtual dado (una sola vez al montar).
+  const didCenter = React.useRef(false);
+  React.useEffect(() => {
+    if (didCenter.current || !initialCenter) return;
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    didCenter.current = true;
+    applyPan({ x: r.width / 2 - initialCenter.x, y: r.height / 2 - initialCenter.y, k: 1 });
+  }, [initialCenter]);
 
   // Zoom que mantiene fijo el punto (sx, sy) relativo al contenedor.
   function zoomAt(sx: number, sy: number, factor: number) {
