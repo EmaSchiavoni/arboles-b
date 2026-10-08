@@ -280,12 +280,12 @@ export function PlayManual() {
                 data-node
                 className={cn(
                   'rounded-md border bg-card shadow-sm',
-                  bad ? 'border-red-500 ring-1 ring-red-500' : isRoot ? 'border-zinc-900 dark:border-zinc-100' : 'border-border',
+                  bad ? 'border-red-500 ring-1 ring-red-500 dark:border-red-400 dark:ring-red-400' : isRoot ? 'border-zinc-900 dark:border-zinc-100' : 'border-border dark:border-zinc-700',
                   isTarget && 'ring-2 ring-dashed ring-zinc-500',
                 )}
               >
                 <div
-                  className="flex h-6 cursor-grab touch-none items-center gap-1 border-b px-1 text-muted-foreground active:cursor-grabbing"
+                  className="flex h-6 cursor-grab touch-none items-center gap-1 border-b border-border px-1 text-muted-foreground active:cursor-grabbing dark:border-zinc-700"
                   onPointerDown={(e) => {
                     if ((e.target as HTMLElement).closest('input,button')) return;
                     onNodePointerDown(e, n.id);
@@ -320,9 +320,9 @@ export function PlayManual() {
                     const linked = live ? n.slots[slot] : null;
                     return (
                       <span key={`cells-${slot}`} className="contents">
-                        <span className={cn('flex items-center justify-center', slot > 0 && 'border-l border-border')}>
+                        <span className={cn('flex items-center justify-center', slot > 0 && 'border-l border-border dark:border-zinc-700')}>
                           {!live ? (
-                            <span className="size-1.5 rounded-full border border-zinc-300 dark:border-zinc-700" title={`Puntero ${slot} (se habilita al agregar claves)`} />
+                            <span className="size-1.5 rounded-full border border-zinc-300 dark:border-zinc-600" title={`Puntero ${slot} (se habilita al agregar claves)`} />
                           ) : linked ? (
                             <button
                               type="button"
@@ -341,7 +341,7 @@ export function PlayManual() {
                                 'flex size-5 items-center justify-center rounded-full border border-dashed',
                                 linking?.nodeId === n.id && linking?.slot === slot
                                   ? 'border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-                                  : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-600 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
+                                  : 'border-zinc-400 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-500 dark:hover:border-zinc-100 dark:hover:text-zinc-100',
                               )}
                             >
                               <Plus className="size-3" />
@@ -350,13 +350,13 @@ export function PlayManual() {
                         </span>
                         {slot < p - 1 && (
                           slot < n.keys.length ? (
-                            <span className="group/key relative flex min-w-0 items-center border-l border-border">
+                            <span className="group/key relative flex min-w-0 items-center border-l border-border dark:border-zinc-700">
                               <Input
                                 defaultValue={n.keys[slot]}
                                 key={`${n.id}-${slot}-${n.keys[slot]}`}
                                 inputMode="numeric"
                                 aria-label={`Clave ${slot + 1}`}
-                                className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
+                                className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
                                 onBlur={(e) => editKey(n.id, slot, e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                               />
@@ -370,13 +370,13 @@ export function PlayManual() {
                               </button>
                             </span>
                           ) : (
-                            <span className="flex min-w-0 items-center border-l border-border">
+                            <span className="flex min-w-0 items-center border-l border-border dark:border-zinc-700">
                               <Input
                                 key={`${n.id}-empty-${slot}`}
                                 data-empty-cell={n.id}
                                 inputMode="numeric"
                                 aria-label={`Clave vacía ${slot + 1}`}
-                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm text-muted-foreground shadow-none focus-visible:ring-0"
+                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium text-muted-foreground shadow-none focus-visible:ring-0"
                                 onBlur={(e) => { addKey(n.id, e.target.value); e.target.value = ''; }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {

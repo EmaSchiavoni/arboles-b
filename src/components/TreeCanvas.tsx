@@ -264,14 +264,14 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
                 d={edgePath(f, t, e.slot)}
                 fill="none"
                 strokeWidth={hot ? 2.5 : 1.5}
-                className={bad ? 'stroke-red-500' : hot ? 'stroke-zinc-900 dark:stroke-zinc-100' : 'stroke-zinc-400 dark:stroke-zinc-600'}
+                className={bad ? 'stroke-red-500 dark:stroke-red-400' : hot ? 'stroke-zinc-900 dark:stroke-zinc-100' : 'stroke-zinc-400 dark:stroke-zinc-500'}
                 markerEnd="url(#arrow)"
               />
             );
           })}
           <defs>
             <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6" fill="none" strokeWidth="1.2" className="stroke-zinc-500" />
+              <path d="M0,0 L6,3 L0,6" fill="none" strokeWidth="1.2" className="stroke-zinc-500 dark:stroke-zinc-400" />
             </marker>
           </defs>
           {extraSvg}
