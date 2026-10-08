@@ -44,9 +44,9 @@ interface Draft {
 
 function seed(): Draft {
   // Lejos del origen para poder mover los nodos en todas direcciones.
-  const a: ManualNode = { id: uid(), keys: [10, 20], slots: [null, null, null], x: 340, y: 220 };
-  const b: ManualNode = { id: uid(), keys: [5], slots: [null, null], x: 120, y: 460 };
-  const c: ManualNode = { id: uid(), keys: [15], slots: [null, null], x: 620, y: 460 };
+  const a: ManualNode = { id: uid(), keys: [10, 20], slots: [null, null, null], x: 700, y: 450 };
+  const b: ManualNode = { id: uid(), keys: [5], slots: [null, null], x: 200, y: 850 };
+  const c: ManualNode = { id: uid(), keys: [15], slots: [null, null], x: 1100, y: 850 };
   a.slots = [b.id, c.id, null];
   return { nodes: [a, b, c], rootId: a.id, p: 4 };
 }
@@ -113,8 +113,8 @@ export function PlayManual() {
         keys: [],
         slots: [null],
         // Lejos del origen para poder moverlo hacia la izquierda y arriba.
-        x: 420 + (d.nodes.length % 4) * 160,
-        y: 340 + Math.floor(d.nodes.length / 4) * 180,
+        x: 900 + (d.nodes.length % 4) * 160,
+        y: 700 + Math.floor(d.nodes.length / 4) * 180,
       };
       d.nodes.push(n);
       if (!d.rootId) d.rootId = n.id;
