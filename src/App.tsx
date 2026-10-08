@@ -23,6 +23,7 @@ export default function App() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <main className="min-h-0 flex-1">
+        <h1 className="sr-only">Playground de Árboles B: generá, explorá y validá árboles B</h1>
         {inAuto ? <PlayAuto key="auto" /> : <PlayManual key="manual" />}
       </main>
 
