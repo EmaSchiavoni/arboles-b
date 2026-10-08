@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Network, PencilRuler } from 'lucide-react';
-import { Toaster } from 'sonner';
 import { Button } from './components/ui/button';
+import { Toaster } from './components/ui/toast';
 import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { PlayAuto } from './routes/PlayAuto';
 import { PlayManual } from './routes/PlayManual';
@@ -34,7 +34,7 @@ export default function App() {
         </Button>
         <ThemeToggle dark={dark} onToggle={toggle} />
       </div>
-      <Toaster position="top-center" theme={dark ? 'dark' : 'light'} />
+      <Toaster />
     </div>
   );
 }

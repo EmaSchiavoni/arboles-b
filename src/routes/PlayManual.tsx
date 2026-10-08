@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { Sheet } from '../components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
@@ -425,27 +425,34 @@ export function PlayManual() {
         <Button size="sm" variant="ghost" onClick={doClear} title="Borrar todo"><Eraser /></Button>
       </BottomToolbar>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Resultado de la validación">
-        {!result ? null : result.valid ? (
-          <div className="flex items-center gap-2">
-            <Badge variant="ok">válido</Badge>
-            <p className="text-sm text-muted-foreground">El árbol cumple todas las reglas del orden p = {p}.</p>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="max-h-[70dvh] overflow-auto rounded-t-3xl sm:mx-auto sm:w-full sm:max-w-lg sm:rounded-3xl">
+          <SheetHeader>
+            <SheetTitle>Resultado de la validación</SheetTitle>
+          </SheetHeader>
+          <div className="mt-3">
+            {!result ? null : result.valid ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="ok">válido</Badge>
+                <p className="text-sm text-muted-foreground">El árbol cumple todas las reglas del orden p = {p}.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="error">{result.issues.length} errores</Badge>
+                  <p className="text-sm text-muted-foreground">Revisá los nodos marcados en rojo.</p>
+                </div>
+                <ul className="space-y-1.5">
+                  {result.issues.map((it, i) => (
+                    <li key={i} className="rounded-2xl border border-red-200 px-3 py-2 text-sm text-muted-foreground dark:border-red-900">
+                      · {it.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="error">{result.issues.length} errores</Badge>
-              <p className="text-sm text-muted-foreground">Revisá los nodos marcados en rojo.</p>
-            </div>
-            <ul className="space-y-1.5">
-              {result.issues.map((it, i) => (
-                <li key={i} className="rounded-2xl border border-red-200 px-3 py-2 text-sm text-muted-foreground dark:border-red-900">
-                  · {it.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        </SheetContent>
       </Sheet>
     </div>
   );

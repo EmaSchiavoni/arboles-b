@@ -9,7 +9,7 @@ import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, insertKeyTracked, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
-import { toast } from 'sonner';
+import { toast } from '../components/ui/use-toast';
 import { ConfirmDialog } from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
 
@@ -70,7 +70,7 @@ export function PlayAuto() {
 
   function parseKey(): number | null {
     if (keyInput.trim() === '') {
-      toast('Debe ingresar un valor en el campo clave antes de realizar esta operación.');
+      toast({ description: 'Debe ingresar un valor en el campo clave antes de realizar esta operación.' });
       return null;
     }
     const v = Number(keyInput.trim());
