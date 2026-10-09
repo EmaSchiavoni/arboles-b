@@ -4,15 +4,33 @@
 // (o sea, ceil(p/2)-1 claves). Raíz: 2..p punteros, salvo nodo único
 // (hoja con 1..p-1 claves). Hijos: 0 o |claves|+1. Hojas al mismo nivel.
 
+export type Key = number | string;
+
 export interface BNode {
   id: string;
-  keys: number[];
+  keys: Key[];
   children: BNode[];
 }
 
 export interface BTree {
   root: BNode | null;
   p: number;
+  // Modo del árbol, elegido por adelantado: las comparaciones difieren.
+  keyType: 'number' | 'string';
+}
+
+// Comparador para claves homogéneas de cualquier modo.
+export function cmpKey(a: Key, b: Key): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const x = String(a);
+  const y = String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+// Normaliza una clave entrante al modo del árbol (defensivo: la UI no
+// debería enviar claves de otro modo).
+export function toTreeKey(tree: BTree, key: Key): Key {
+  return tree.keyType === 'string' ? String(key) : key;
 }
 
 export function minPointers(p: number): number {
@@ -32,20 +50,20 @@ export function maxKeys(p: number): number {
 // estructural: desbordes, divisiones, préstamos, fusiones, raíz nueva).
 
 export type Step =
-  | { t: 'insert-leaf'; key: number; after: number[] }
-  | { t: 'overflow'; keys: number[]; max: number }
-  | { t: 'split'; left: number[]; median: number; right: number[] }
-  | { t: 'promote'; median: number; after: number[] }
-  | { t: 'new-root'; median: number }
-  | { t: 'remove-leaf'; key: number; after: number[] }
-  | { t: 'replace-pred'; key: number; pred: number }
-  | { t: 'borrow-left'; down: number; up: number }
-  | { t: 'borrow-right'; down: number; up: number }
-  | { t: 'merge'; left: number[]; parentKey: number; right: number[] }
-  | { t: 'root-replaced'; keys: number[] };
+  | { t: 'insert-leaf'; key: Key; after: Key[] }
+  | { t: 'overflow'; keys: Key[]; max: number }
+  | { t: 'split'; left: Key[]; median: Key; right: Key[] }
+  | { t: 'promote'; median: Key; after: Key[] }
+  | { t: 'new-root'; median: Key }
+  | { t: 'remove-leaf'; key: Key; after: Key[] }
+  | { t: 'replace-pred'; key: Key; pred: Key }
+  | { t: 'borrow-left'; down: Key; up: Key }
+  | { t: 'borrow-right'; down: Key; up: Key }
+  | { t: 'merge'; left: Key[]; parentKey: Key; right: Key[] }
+  | { t: 'root-replaced'; keys: Key[] };
 
 export function formatStep(s: Step): string {
-  const fmt = (ks: number[]) => `[${ks.join(', ')}]`;
+  const fmt = (ks: Key[]) => `[${ks.join(', ')}]`;
   switch (s.t) {
     case 'insert-leaf':
       return `insertar ${s.key} en hoja ${fmt(s.after)}`;
@@ -73,9 +91,9 @@ export function formatStep(s: Step): string {
 }
 
 let idCounter = 0;
-export function makeNode(keys: number[] = [], children: BNode[] = []): BNode {
+export function makeNode(keys: Key[] = [], children: BNode[] = []): BNode {
   idCounter += 1;
-  return { id: `n${Date.now().toString(36)}${idCounter}`, keys: [...keys].sort((a, b) => a - b), children };
+  return { id: `n${Date.now().toString(36)}${idCounter}`, keys: [...keys].sort(cmpKey), children };
 }
 
 export function cloneTree(root: BNode | null): BNode | null {
@@ -83,8 +101,8 @@ export function cloneTree(root: BNode | null): BNode | null {
   return { id: root.id, keys: [...root.keys], children: root.children.map(cloneTree) as BNode[] };
 }
 
-export function createTree(p: number): BTree {
-  return { root: null, p };
+export function createTree(p: number, keyType: BTree['keyType'] = 'number'): BTree {
+  return { root: null, p, keyType };
 }
 
 export function height(root: BNode | null): number {
@@ -107,13 +125,13 @@ export function countKeys(root: BNode | null): number {
   return root.keys.length + root.children.reduce((acc, c) => acc + countKeys(c), 0);
 }
 
-export function searchPath(root: BNode | null, key: number): string[] {
+export function searchPath(root: BNode | null, key: Key): string[] {
   const path: string[] = [];
   let cur = root;
   while (cur) {
     path.push(cur.id);
     let i = 0;
-    while (i < cur.keys.length && key > cur.keys[i]) i += 1;
+    while (i < cur.keys.length && cmpKey(key, cur.keys[i]) > 0) i += 1;
     if (i < cur.keys.length && key === cur.keys[i]) break;
     if (cur.children.length === 0) break;
     cur = cur.children[i] ?? null;
@@ -121,11 +139,11 @@ export function searchPath(root: BNode | null, key: number): string[] {
   return path;
 }
 
-export function contains(root: BNode | null, key: number): boolean {
+export function contains(root: BNode | null, key: Key): boolean {
   let cur = root;
   while (cur) {
     let i = 0;
-    while (i < cur.keys.length && key > cur.keys[i]) i += 1;
+    while (i < cur.keys.length && cmpKey(key, cur.keys[i]) > 0) i += 1;
     if (i < cur.keys.length && key === cur.keys[i]) return true;
     if (cur.children.length === 0) return false;
     cur = cur.children[i] ?? null;
@@ -138,7 +156,7 @@ export function contains(root: BNode | null, key: number): boolean {
 // (p claves, una más que el máximo). Así el nodo a partir siempre tiene
 // cantidad impar de claves y ambos lados quedan con >= minKeys, para todo p.
 
-function splitOverflow(node: BNode, p: number, steps?: Step[]): { median: number; right: BNode } {
+function splitOverflow(node: BNode, p: number, steps?: Step[]): { median: Key; right: BNode } {
   // Normalización de la cátedra: con cantidad par de claves (p par) hay dos
   // medianas candidatas y se elige la de la IZQUIERDA (la menor).
   const mid = Math.ceil(p / 2) - 1;
@@ -161,13 +179,13 @@ function splitOverflow(node: BNode, p: number, steps?: Step[]): { median: number
 // padres que reciben una mediana y mitades derechas de cada división).
 function insertRec(
   node: BNode,
-  key: number,
+  key: Key,
   p: number,
   touched: Set<string>,
   steps?: Step[],
-): { median: number; right: BNode } | null {
+): { median: Key; right: BNode } | null {
   let i = 0;
-  while (i < node.keys.length && key > node.keys[i]) i += 1;
+  while (i < node.keys.length && cmpKey(key, node.keys[i]) > 0) i += 1;
   if (i < node.keys.length && node.keys[i] === key) return null; // Duplicado.
   if (node.children.length === 0) {
     node.keys.splice(i, 0, key);
@@ -190,19 +208,25 @@ function insertRec(
   return null;
 }
 
-export function insertKey(tree: BTree, key: number): BTree {
+export function insertKey(tree: BTree, key: Key): BTree {
   return insertKeyTracked(tree, key).tree;
 }
 
 // Igual que insertKey, pero además devuelve los ids de los nodos que la
 // inserción creó o modificó (divisiones incluidas), para resaltarlos en la UI.
-export function insertKeyTracked(tree: BTree, key: number): { tree: BTree; touched: string[] } {
+export function insertKeyTracked(tree: BTree, key: Key): { tree: BTree; touched: string[] } {
   const r = insertKeyLogged(tree, key);
   return { tree: r.tree, touched: r.touched };
 }
 
-export function insertKeyLogged(tree: BTree, key: number): { tree: BTree; touched: string[]; steps: Step[] } {
-  if (!Number.isFinite(key) || !Number.isInteger(key)) return { tree, touched: [], steps: [] };
+export function insertKeyLogged(tree: BTree, key: Key): { tree: BTree; touched: string[]; steps: Step[] } {
+  const keyType = tree.keyType === 'string' ? 'string' : 'number';
+  if (keyType === 'string') {
+    key = String(key);
+    if (key.length === 0) return { tree, touched: [], steps: [] };
+  } else if (typeof key !== 'number' || !Number.isFinite(key) || !Number.isInteger(key)) {
+    return { tree, touched: [], steps: [] };
+  }
   const root = cloneTree(tree.root);
   const p = tree.p;
   const touched = new Set<string>();
@@ -211,22 +235,22 @@ export function insertKeyLogged(tree: BTree, key: number): { tree: BTree; touche
     const r = makeNode([key]);
     touched.add(r.id);
     steps.push({ t: 'insert-leaf', key, after: [key] });
-    return { tree: { p, root: r }, touched: [...touched], steps };
+    return { tree: { p, root: r, keyType }, touched: [...touched], steps };
   }
-  if (contains(root, key)) return { tree: { p, root }, touched: [], steps: [] };
+  if (contains(root, key)) return { tree: { p, root, keyType }, touched: [], steps: [] };
   const res = insertRec(root, key, p, touched, steps);
   if (res) {
     const newRoot = makeNode([res.median], [root, res.right]);
     touched.add(newRoot.id);
     steps.push({ t: 'new-root', median: res.median });
-    return { tree: { p, root: newRoot }, touched: [...touched], steps };
+    return { tree: { p, root: newRoot, keyType }, touched: [...touched], steps };
   }
-  return { tree: { p, root }, touched: [...touched], steps };
+  return { tree: { p, root, keyType }, touched: [...touched], steps };
 }
 
 // ---------- Eliminación clásica ----------
 
-function getPredecessor(node: BNode): number {
+function getPredecessor(node: BNode): Key {
   let cur = node;
   while (cur.children.length > 0) cur = cur.children[cur.children.length - 1];
   return cur.keys[cur.keys.length - 1];
@@ -258,7 +282,7 @@ function fixChild(parent: BNode, index: number, p: number, steps?: Step[]): void
       // Préstamo desde la izquierda.
       const down = parent.keys[index - 1];
       child.keys.unshift(down);
-      const up = leftSibling.keys.pop() as number;
+      const up = leftSibling.keys.pop() as Key;
       parent.keys[index - 1] = up;
       if (leftSibling.children.length > 0) {
         child.children.unshift(leftSibling.children.pop() as BNode);
@@ -270,7 +294,7 @@ function fixChild(parent: BNode, index: number, p: number, steps?: Step[]): void
       // Préstamo desde la derecha.
       const down = parent.keys[index];
       child.keys.push(down);
-      const up = rightSibling.keys.shift() as number;
+      const up = rightSibling.keys.shift() as Key;
       parent.keys[index] = up;
       if (rightSibling.children.length > 0) {
         child.children.push(rightSibling.children.shift() as BNode);
@@ -302,7 +326,7 @@ function fixChild(parent: BNode, index: number, p: number, steps?: Step[]): void
   }
 }
 
-function removeFromNode(node: BNode, key: number, p: number, steps?: Step[]): void {
+function removeFromNode(node: BNode, key: Key, p: number, steps?: Step[]): void {
   const idx = node.keys.findIndex((k) => k === key);
   if (idx !== -1) {
     if (node.children.length === 0) {
@@ -326,28 +350,30 @@ function removeFromNode(node: BNode, key: number, p: number, steps?: Step[]): vo
   }
   if (node.children.length === 0) return; // No existe.
   let i = 0;
-  while (i < node.keys.length && key > node.keys[i]) i += 1;
+  while (i < node.keys.length && cmpKey(key, node.keys[i]) > 0) i += 1;
   removeFromNode(node.children[i], key, p, steps);
   fixChild(node, i, p, steps);
 }
 
-export function deleteKey(tree: BTree, key: number): BTree {
+export function deleteKey(tree: BTree, key: Key): BTree {
   return deleteKeyLogged(tree, key).tree;
 }
 
-export function deleteKeyLogged(tree: BTree, key: number): { tree: BTree; steps: Step[] } {
+export function deleteKeyLogged(tree: BTree, key: Key): { tree: BTree; steps: Step[] } {
+  const keyType = tree.keyType === 'string' ? 'string' : 'number';
+  const target = toTreeKey(tree, key);
   const root = cloneTree(tree.root);
   const p = tree.p;
   const steps: Step[] = [];
-  if (!root) return { tree: { p, root: null }, steps };
-  if (!contains(root, key)) return { tree: { p, root }, steps };
-  removeFromNode(root, key, p, steps);
+  if (!root) return { tree: { p, root: null, keyType }, steps };
+  if (!contains(root, target)) return { tree: { p, root, keyType }, steps };
+  removeFromNode(root, target, p, steps);
   if (root.keys.length === 0) {
     if (root.children.length > 0) {
       steps.push({ t: 'root-replaced', keys: [...root.children[0].keys] });
-      return { tree: { p, root: root.children[0] }, steps };
+      return { tree: { p, root: root.children[0], keyType }, steps };
     }
-    return { tree: { p, root: null }, steps };
+    return { tree: { p, root: null, keyType }, steps };
   }
-  return { tree: { p, root }, steps };
+  return { tree: { p, root, keyType }, steps };
 }

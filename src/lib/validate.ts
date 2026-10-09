@@ -1,9 +1,11 @@
 // Validador de Árbol B manual. Trabaja sobre un grafo libre de nodos
 // donde cada nodo guarda ids de hijos por slot (null = sin puntero).
 
+import { cmpKey, type Key } from './btree';
+
 export interface ManualNode {
   id: string;
-  keys: number[];
+  keys: Key[];
   slots: (string | null)[]; // longitud = keys.length + 1
   x: number;
   y: number;
@@ -19,7 +21,12 @@ export interface ValidationResult {
   issues: ValidationIssue[];
 }
 
-export function validateManualTree(nodes: ManualNode[], p: number, rootId: string | null): ValidationResult {
+export function validateManualTree(
+  nodes: ManualNode[],
+  p: number,
+  rootId: string | null,
+  keyType: 'number' | 'string' = 'number',
+): ValidationResult {
   const issues: ValidationIssue[] = [];
   const minPtr = Math.ceil(p / 2); // punteros mínimos en nodos no-raíz no-hoja
   const min = minPtr - 1; // claves mínimas en nodos no-raíz
@@ -46,12 +53,16 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
       issues.push({ nodeId: n.id, message: 'La raíz no puede estar vacía si hay nodos.' });
     }
     for (const k of n.keys) {
-      if (!Number.isInteger(k)) {
+      if (typeof k !== (keyType === 'string' ? 'string' : 'number')) {
+        issues.push({ nodeId: n.id, message: `La clave ${k} no es del tipo ${keyType === 'string' ? 'texto' : 'numérico'} del árbol.` });
+        break;
+      }
+      if (keyType === 'number' && !Number.isInteger(k)) {
         issues.push({ nodeId: n.id, message: 'Hay claves no enteras. Usá solo enteros.' });
         break;
       }
     }
-    const sorted = [...n.keys].sort((a, b) => a - b);
+    const sorted = [...n.keys].sort(cmpKey);
     for (let i = 0; i < n.keys.length; i += 1) {
       if (n.keys[i] !== sorted[i]) {
         issues.push({ nodeId: n.id, message: 'Las claves no están ordenadas de menor a mayor.' });
@@ -131,13 +142,16 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
   }
 
   // 4. Orden de claves entre padre e hijos + hojas a igual profundidad.
+  // Los extremos null significan "sin cota" (funciona en ambos modos).
   const leafDepths = new Set<number>();
-  function checkOrder(nodeId: string, low: number, high: number, depth: number) {
+  function checkOrder(nodeId: string, low: Key | null, high: Key | null, depth: number) {
     const n = byId.get(nodeId);
     if (!n) return;
     for (const k of n.keys) {
-      if (!(k > low && k < high)) {
-        issues.push({ nodeId: n.id, message: `La clave ${k} está fuera del rango permitido (${low}, ${high}).` });
+      if (!((low === null || cmpKey(low, k) < 0) && (high === null || cmpKey(k, high) < 0))) {
+        const lo = low === null ? '−∞' : low;
+        const hi = high === null ? '+∞' : high;
+        issues.push({ nodeId: n.id, message: `La clave ${k} está fuera del rango permitido (${lo}, ${hi}).` });
       }
     }
     const connected = n.slots.filter((s) => s !== null);
@@ -145,8 +159,8 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
       leafDepths.add(depth);
       return;
     }
-    const bounds: [number, number][] = [];
-    let prev = low;
+    const bounds: [Key | null, Key | null][] = [];
+    let prev: Key | null = low;
     for (const k of n.keys) {
       bounds.push([prev, k]);
       prev = k;
@@ -156,13 +170,13 @@ export function validateManualTree(nodes: ManualNode[], p: number, rootId: strin
       if (target) checkOrder(target, bounds[i][0], bounds[i][1], depth + 1);
     });
   }
-  checkOrder(rootId, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, 0);
+  checkOrder(rootId, null, null, 0);
   if (leafDepths.size > 1) {
     issues.push({ message: 'No todas las hojas están a la misma profundidad.' });
   }
 
   // 5. Duplicados globales.
-  const seen = new Map<number, string>();
+  const seen = new Map<Key, string>();
   for (const n of nodes) {
     for (const k of n.keys) {
       if (seen.has(k)) {

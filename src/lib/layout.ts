@@ -1,10 +1,10 @@
-import type { BNode } from './btree';
+import type { BNode, Key } from './btree';
 
 // Layout por niveles para el canvas de solo lectura.
 // Devuelve posiciones en un espacio virtual que el canvas escala con pan/zoom.
 export interface PlacedNode {
   id: string;
-  keys: number[];
+  keys: Key[];
   x: number;
   y: number;
   depth: number;

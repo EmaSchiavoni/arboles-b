@@ -1,9 +1,10 @@
 import * as React from 'react';
+import type { Key } from '../lib/btree';
 import { cn } from '../lib/utils';
 
 export interface CanvasNode {
   id: string;
-  keys: number[];
+  keys: Key[];
   x: number;
   y: number;
 }
