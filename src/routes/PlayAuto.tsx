@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Dices, Eraser, Plus, Search, Trash2, ChevronRight, ListCollapse } from 'lucide-react';
+import { Dices, Eraser, Plus, Search, Settings2, Trash2, ChevronRight, ListCollapse } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -9,7 +9,7 @@ import { BottomToolbar } from '../components/BottomToolbar';
 import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TypeSelector } from '../components/TypeSelector';
 import { TreeCanvas } from '../components/TreeCanvas';
-import { cmpKey, contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, toTreeKey, type BTree, type Key } from '../lib/btree';
+import { cmpKey, contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, toTreeKey, type BTree, type BTreePolicy, type Key } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, loadView, save } from '../lib/storage';
 import { parseKeyList } from '../lib/keys';
@@ -37,6 +37,45 @@ function autoSlotX(x: number, slot: number): number {
   return x + slot * (AUTO_PTR_W + AUTO_KEY_W) + AUTO_PTR_W / 2;
 }
 
+  function SegRow<T extends string>({
+    label,
+    hint,
+    value,
+    options,
+    onPick,
+  }: {
+    label: string;
+    hint: string;
+    value: T;
+    options: { v: T; label: string }[];
+    onPick: (v: T) => void;
+  }) {
+    return (
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+        <div className="flex w-max max-w-full items-center gap-1 rounded-full border bg-card p-1" role="group" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onPick(o.v)}
+            aria-pressed={value === o.v}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+              value === o.v
+                ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PlayAuto() {
   const [p, setP] = React.useState<number>(() => load<number>(KEYS.autoP, 4));
   const [tree, setTree] = React.useState<BTree>(() => {
@@ -55,6 +94,23 @@ export function PlayAuto() {
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [confirmType, setConfirmType] = React.useState<BTree['keyType'] | null>(null);
   const [openSteps, setOpenSteps] = React.useState<number | null>(null);
+  const [showPolicy, setShowPolicy] = React.useState(false);
+
+  // Política del algoritmo (qué lado priorizar). Por defecto la cátedra.
+  // Se aplica a las operaciones futuras y se conserva en localStorage.
+  const [policy, setPolicy] = React.useState<BTreePolicy>(() => {
+    const saved = load<Partial<BTreePolicy> | null>(KEYS.autoPolicy, null);
+    const side = (v: unknown): 'left' | 'right' => (v === 'left' || v === 'right' ? v : 'left');
+    return {
+      splitMedian: side(saved?.splitMedian),
+      borrowFrom: side(saved?.borrowFrom),
+      mergeWith: side(saved?.mergeWith),
+      replaceWith: saved?.replaceWith === 'succ' ? 'succ' : 'pred',
+    };
+  });
+  React.useEffect(() => {
+    save(KEYS.autoPolicy, policy);
+  }, [policy]);
 
   // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
   // debounce en cada cambio (más un volcado al desmontar por cambio de modo).
@@ -154,7 +210,7 @@ export function PlayAuto() {
         pushHistory(`insertar ${kk} → duplicada`);
         continue;
       }
-      const r = insertKeyLogged(cur, kk);
+      const r = insertKeyLogged(cur, kk, policy);
       cur = r.tree;
       touched = r.touched;
       lastK = kk;
@@ -187,7 +243,7 @@ export function PlayAuto() {
         pushHistory(`eliminar ${kk} → no existe`);
         continue;
       }
-      const r = deleteKeyLogged(cur, kk);
+      const r = deleteKeyLogged(cur, kk, policy);
       cur = r.tree;
       deleted += 1;
       pushHistory(`eliminar ${kk} → ok`, r.steps.map(formatStep));
@@ -241,7 +297,7 @@ export function PlayAuto() {
       doRandom();
       return;
     }
-    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, kk);
+    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, kk, policy);
     setTree(next);
     setHighlight(new Set(touched));
     setLastKey(kk);
@@ -270,7 +326,7 @@ export function PlayAuto() {
     })();
     keys.sort(cmpKey);
     let rebuilt: BTree = { p: clamped, root: null, keyType: tree.keyType };
-    for (const k of keys) rebuilt = insertKey(rebuilt, k);
+    for (const k of keys) rebuilt = insertKey(rebuilt, k, policy);
     setP(clamped);
     setTree(rebuilt);
     setHighlight(new Set());
@@ -355,6 +411,9 @@ export function PlayAuto() {
               <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
             </div>
             <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
+                <Button size="sm" variant="ghost" onClick={() => setShowPolicy(true)} title="Más configuraciones" aria-label="Más configuraciones" className="px-2"><Settings2 /></Button>
+              </div>
               <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
                 <OrderPicker id="orden-auto" p={p} onChange={changeP} />
               </div>
@@ -461,6 +520,58 @@ export function PlayAuto() {
         confirmLabel="Vaciar y cambiar"
         onConfirm={confirmTypeChange}
       />
+      <Dialog open={showPolicy} onOpenChange={setShowPolicy}>
+        <DialogContent className="max-h-[80dvh] w-[calc(100vw-2rem)] overflow-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Más configuraciones</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Qué lado priorizar ante ambigüedades del algoritmo. Rige para operaciones futuras.
+          </p>
+          <div className="space-y-4">
+            <SegRow
+              label="Dividir nodo con dos medianas candidatas"
+              hint="Cuál de las dos claves del medio sube al padre."
+              value={policy.splitMedian}
+              options={[
+                { v: 'left', label: 'Izquierda (menor)' },
+                { v: 'right', label: 'Derecha (mayor)' },
+              ]}
+              onPick={(v) => setPolicy((pol) => ({ ...pol, splitMedian: v }))}
+            />
+            <SegRow
+              label="Pedir prestado ante subocupación"
+              hint="A qué hermano pedirle una clave primero."
+              value={policy.borrowFrom}
+              options={[
+                { v: 'left', label: 'Izquierdo' },
+                { v: 'right', label: 'Derecho' },
+              ]}
+              onPick={(v) => setPolicy((pol) => ({ ...pol, borrowFrom: v }))}
+            />
+            <SegRow
+              label="Fusionar ante subocupación"
+              hint="Con qué hermano intentar fusionar primero."
+              value={policy.mergeWith}
+              options={[
+                { v: 'left', label: 'Izquierdo' },
+                { v: 'right', label: 'Derecho' },
+              ]}
+              onPick={(v) => setPolicy((pol) => ({ ...pol, mergeWith: v }))}
+            />
+            <SegRow
+              label="Borrar clave de nodo interno"
+              hint="Con qué clave de hoja intercambiarla antes de borrar."
+              value={policy.replaceWith}
+              options={[
+                { v: 'pred', label: 'Predecesor (izq.)' },
+                { v: 'succ', label: 'Sucesor (der.)' },
+              ]}
+              onPick={(v) => setPolicy((pol) => ({ ...pol, replaceWith: v }))}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

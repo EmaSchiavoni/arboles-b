@@ -21,6 +21,7 @@ export const KEYS = {
   autoP: 'arboles-b:auto-p',
   autoTree: 'arboles-b:auto-tree',
   autoHistory: 'arboles-b:auto-history',
+  autoPolicy: 'arboles-b:auto-policy',
   autoView: 'arboles-b:auto-view',
   manual: 'arboles-b:manual-draft',
   manualView: 'arboles-b:manual-view',
