@@ -35,14 +35,17 @@ interface Props<T extends CanvasNode> {
   // Alto del nodo (de dónde sale la flecha). Por defecto NODE_HEIGHT.
   nodeHeight?: number;
   // Punto virtual a centrar en el contenedor al montar (una sola vez).
+  // Se ignora si hay vista guardada: la restauración tiene prioridad.
   initialCenter?: { x: number; y: number } | null;
+  // Vista guardada a restaurar al montar (tiene prioridad sobre el centro).
+  initialView?: { x: number; y: number; k: number } | null;
   // Notifica cada cambio de vista (paneo/zoom) al padre.
   onViewChange?: (view: { x: number; y: number; k: number; w: number; h: number }) => void;
 }
 
-export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight, initialCenter, onViewChange }: Props<T>) {
+export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight, initialCenter, initialView, onViewChange }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
-  const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
+  const [pan, setPan] = React.useState(() => initialView ?? { x: 16, y: 16, k: 1 });
   const panRef = React.useRef(pan);
   const drag = React.useRef<{ sx: number; sy: number; px: number; py: number; active: boolean }>({ sx: 0, sy: 0, px: 0, py: 0, active: false });
   const pointers = React.useRef(new Map<number, { x: number; y: number; node: boolean }>());
@@ -83,9 +86,10 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
   });
 
   // Centrado inicial del punto virtual dado (una sola vez al montar).
+  // Si hay vista guardada se restaura esa en su lugar.
   const didCenter = React.useRef(false);
   React.useEffect(() => {
-    if (didCenter.current || !initialCenter) return;
+    if (didCenter.current || !initialCenter || initialView) return;
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -113,7 +117,7 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
   // de los botones flotantes superiores.
   const [flashZoom, setFlashZoom] = React.useState(false);
   const flashTimer = React.useRef<number | null>(null);
-  const prevK = React.useRef(1);
+  const prevK = React.useRef(pan.k);
   React.useEffect(() => {
     if (pan.k === prevK.current) return;
     prevK.current = pan.k;

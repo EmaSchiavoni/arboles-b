@@ -33,7 +33,7 @@ npm run build    # compilación a dist/
 npm run preview  # vista previa de la compilación
 ```
 
-Sin backend ni base de datos: toda la persistencia (tema, orden de cada playground, último árbol automático y borrador manual) reside en `localStorage`.
+Sin backend ni base de datos: toda la persistencia (tema, orden de cada playground, último árbol automático, borrador manual y vista con paneo/zoom de cada modo) reside en `localStorage`.
 
 ## Estructura del código
 

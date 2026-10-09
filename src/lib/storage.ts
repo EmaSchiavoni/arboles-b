@@ -21,5 +21,20 @@ export const KEYS = {
   autoP: 'arboles-b:auto-p',
   autoTree: 'arboles-b:auto-tree',
   autoHistory: 'arboles-b:auto-history',
+  autoView: 'arboles-b:auto-view',
   manual: 'arboles-b:manual-draft',
+  manualView: 'arboles-b:manual-view',
 } as const;
+
+export interface StoredView {
+  x: number;
+  y: number;
+  k: number;
+}
+
+// Vista saneada o null si no hay nada guardado válido.
+export function loadView(key: string): StoredView | null {
+  const v = load<StoredView | null>(key, null);
+  if (!v || !Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.k)) return null;
+  return { x: v.x, y: v.y, k: Math.min(3, Math.max(0.25, v.k)) };
+}

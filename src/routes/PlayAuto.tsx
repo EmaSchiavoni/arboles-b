@@ -11,7 +11,7 @@ import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
-import { KEYS, load, save } from '../lib/storage';
+import { KEYS, load, loadView, save } from '../lib/storage';
 import { parseKeyList } from '../lib/keys';
 import { toast } from '../components/ui/use-toast';
 import { ConfirmDialog } from '../components/ui/alert-dialog';
@@ -52,6 +52,29 @@ export function PlayAuto() {
   const [showHistory, setShowHistory] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [openSteps, setOpenSteps] = React.useState<number | null>(null);
+
+  // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
+  // debounce en cada cambio (más un volcado al desmontar por cambio de modo).
+  const [initialView] = React.useState(() => loadView(KEYS.autoView));
+  const viewRef = React.useRef({ x: 16, y: 16, k: 1 });
+  const viewTimer = React.useRef<number | null>(null);
+  function handleViewChange(v: { x: number; y: number; k: number; w: number; h: number }) {
+    viewRef.current = v;
+    if (viewTimer.current !== null) window.clearTimeout(viewTimer.current);
+    viewTimer.current = window.setTimeout(() => {
+      save(KEYS.autoView, { x: v.x, y: v.y, k: v.k });
+    }, 400);
+  }
+  React.useEffect(
+    () => () => {
+      if (viewTimer.current !== null) {
+        window.clearTimeout(viewTimer.current);
+        const v = viewRef.current;
+        save(KEYS.autoView, { x: v.x, y: v.y, k: v.k });
+      }
+    },
+    [],
+  );
 
   React.useEffect(() => {
     save(KEYS.autoP, p);
@@ -255,6 +278,8 @@ export function PlayAuto() {
           getNodeWidth={() => autoTableWidth(p)}
           getSlotX={(n, slot) => autoSlotX(n.x, slot)}
           nodeHeight={AUTO_H}
+          initialView={initialView}
+          onViewChange={handleViewChange}
           renderNode={(n) => {
             const hot = highlight.has(n.id);
             const cols: string[] = [];

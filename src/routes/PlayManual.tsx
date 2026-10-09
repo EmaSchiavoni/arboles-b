@@ -9,7 +9,7 @@ import { BottomToolbar } from '../components/BottomToolbar';
 import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
-import { KEYS, load, save } from '../lib/storage';
+import { KEYS, load, loadView, save } from '../lib/storage';
 import { cn } from '../lib/utils';
 
 // Tabla completa siempre visible: p columnas de puntero (delgadas) + p-1
@@ -71,6 +71,28 @@ export function PlayManual() {
   const viewRef = React.useRef({ x: 16, y: 16, k: 1, w: 0, h: 0 });
 
   const { nodes, rootId, p } = draft;
+
+  // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
+  // debounce en cada cambio (más un volcado al desmontar por cambio de modo).
+  const [initialView] = React.useState(() => loadView(KEYS.manualView));
+  const viewTimer = React.useRef<number | null>(null);
+  function handleViewChange(v: { x: number; y: number; k: number; w: number; h: number }) {
+    viewRef.current = v;
+    if (viewTimer.current !== null) window.clearTimeout(viewTimer.current);
+    viewTimer.current = window.setTimeout(() => {
+      save(KEYS.manualView, { x: v.x, y: v.y, k: v.k });
+    }, 400);
+  }
+  React.useEffect(
+    () => () => {
+      if (viewTimer.current !== null) {
+        window.clearTimeout(viewTimer.current);
+        const v = viewRef.current;
+        save(KEYS.manualView, { x: v.x, y: v.y, k: v.k });
+      }
+    },
+    [],
+  );
 
   // Centroide de los nodos al abrir (una sola vez): el canvas centra la
   // vista ahí para que los nodos aparezcan centrados en su nueva posición.
@@ -381,9 +403,8 @@ export function PlayManual() {
           getNodeWidth={() => manualNodeWidth(p)}
           getSlotX={(node, slot) => manualSlotX(node.x, p, slot)}
           initialCenter={initialCenter}
-          onViewChange={(v) => {
-            viewRef.current = v;
-          }}
+          initialView={initialView}
+          onViewChange={handleViewChange}
           renderNode={(n) => {
             const isRoot = n.id === rootId;
             const isTarget = !!linking && linking.nodeId !== n.id;
