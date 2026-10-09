@@ -159,12 +159,26 @@ export function PlayManual() {
   function removeKey(id: string, index: number) {
     update((d) => {
       const n = d.nodes.find((x) => x.id === id);
-      if (!n) return d;
+      if (!n || index < 0 || index >= n.keys.length) return d;
       n.keys.splice(index, 1);
       n.slots = fixSlots(n.keys, n.slots);
       return d;
     });
   }
+
+  // Foco a restaurar tras un commit que remonta inputs (p. ej. al tabular
+  // después de vaciar una celda). Solo se aplica si el foco quedó en el aire.
+  const focusRef = React.useRef<{ id: string; slot: number } | null>(null);
+  React.useEffect(() => {
+    if (!focusRef.current) return;
+    const target = focusRef.current;
+    focusRef.current = null;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const el = document.querySelector<HTMLInputElement>(
+      `input[data-key-cell="${target.id}:${target.slot}"], input[data-empty-cell="${target.id}"]`,
+    );
+    el?.focus();
+  });
 
   function editKey(id: string, index: number, raw: string) {
     const v = Number(raw);
@@ -175,6 +189,20 @@ export function PlayManual() {
       n.keys[index] = v;
       return d;
     });
+  }
+
+  // Commit de una celda con clave al perder el foco: celda vaciada = clave
+  // eliminada (equivale a la ×); valor sin cambios = no tocar el estado.
+  function commitKeyCell(id: string, slot: number, raw: string) {
+    if (raw.trim() === '') {
+      focusRef.current = { id, slot };
+      removeKey(id, slot);
+      return;
+    }
+    const v = Number(raw);
+    if (!Number.isInteger(v)) return;
+    if (nodes.find((x) => x.id === id)?.keys[slot] === v) return;
+    editKey(id, slot, raw);
   }
 
   function startLink(nodeId: string, slot: number) {
@@ -365,10 +393,11 @@ export function PlayManual() {
                               <Input
                                 defaultValue={n.keys[slot]}
                                 key={`${n.id}-${slot}-${n.keys[slot]}`}
+                                data-key-cell={`${n.id}:${slot}`}
                                 inputMode="numeric"
                                 aria-label={`Clave ${slot + 1}`}
                                 className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
-                                onBlur={(e) => editKey(n.id, slot, e.target.value)}
+                                onBlur={(e) => commitKeyCell(n.id, slot, e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                               />
                               <button
