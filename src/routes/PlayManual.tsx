@@ -66,10 +66,9 @@ export function PlayManual() {
   const [result, setResult] = React.useState<ValidationResult | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const dragRef = React.useRef<{ id: string; nx: number; ny: number; sx: number; sy: number } | null>(null);
-  // Zoom actual del canvas: el arrastre convierte píxeles de pantalla a
-  // unidades virtuales dividiendo por k (si no, con zoom el nodo se mueve
-  // más o menos que el mouse).
-  const viewRef = React.useRef({ x: 16, y: 16, k: 1 });
+  // Vista actual del canvas (con su tamaño): los nodos nuevos nacen en el
+  // centro del viewport para no perderse fuera de vista.
+  const viewRef = React.useRef({ x: 16, y: 16, k: 1, w: 0, h: 0 });
 
   const { nodes, rootId, p } = draft;
 
@@ -110,13 +109,19 @@ export function PlayManual() {
 
   function addNode() {
     update((d) => {
+      const v = viewRef.current;
+      const k = v.k || 1;
+      // Centro del viewport en coordenadas virtuales (+ cascada leve para
+      // no apilar nodos consecutivos). Si aún no hay medidas, punto fijo.
+      const cx = v.w > 0 ? (v.w / 2 - v.x) / k : 900;
+      const cy = v.h > 0 ? (v.h / 2 - v.y) / k : 700;
+      const j = d.nodes.length % 5;
       const n: ManualNode = {
         id: uid(),
         keys: [],
         slots: [null],
-        // Lejos del origen para poder moverlo hacia la izquierda y arriba.
-        x: 900 + (d.nodes.length % 4) * 160,
-        y: 700 + Math.floor(d.nodes.length / 4) * 180,
+        x: Math.max(0, cx - manualNodeWidth(d.p) / 2 + j * 30),
+        y: Math.max(0, cy - 32 + j * 24),
       };
       d.nodes.push(n);
       if (!d.rootId) d.rootId = n.id;
