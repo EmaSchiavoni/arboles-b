@@ -144,13 +144,14 @@ export function PlayManual() {
   }
 
   function addKey(id: string, raw: string) {
+    // El modo manual es libre: se aceptan duplicados (los reporta Validar).
     const v = Number(raw.trim());
     if (raw.trim() === '' || !Number.isInteger(v)) return;
     const n = nodes.find((x) => x.id === id);
-    if (!n || n.keys.includes(v) || n.keys.length >= p - 1) return;
+    if (!n || n.keys.length >= p - 1) return;
     update((d) => {
       const t = d.nodes.find((x) => x.id === id);
-      if (!t || t.keys.includes(v) || t.keys.length >= d.p - 1) return d;
+      if (!t || t.keys.length >= d.p - 1) return d;
       t.keys = [...t.keys, v];
       t.slots = fixSlots(t.keys, t.slots);
       return d;
