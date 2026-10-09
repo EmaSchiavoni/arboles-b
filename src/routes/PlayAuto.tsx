@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { ScrollArea } from '../components/ui/scroll-area';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
+import { TypeSelector } from '../components/TypeSelector';
 import { TreeCanvas } from '../components/TreeCanvas';
-import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
+import { cmpKey, contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, toTreeKey, type BTree, type Key } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, loadView, save } from '../lib/storage';
 import { parseKeyList } from '../lib/keys';
@@ -40,14 +41,16 @@ function autoSlotX(x: number, slot: number): number {
 export function PlayAuto() {
   const [p, setP] = React.useState<number>(() => load<number>(KEYS.autoP, 4));
   const [tree, setTree] = React.useState<BTree>(() => {
-    const saved = load<{ p: number; root: BTree['root'] } | null>(KEYS.autoTree, null);
-    if (saved && saved.p >= ORDER_MIN && saved.p <= ORDER_MAX) return { p: saved.p, root: saved.root };
+    const saved = load<{ p: number; root: BTree['root']; keyType?: BTree['keyType'] } | null>(KEYS.autoTree, null);
+    if (saved && saved.p >= ORDER_MIN && saved.p <= ORDER_MAX) {
+      return { p: saved.p, root: saved.root, keyType: saved.keyType === 'string' ? 'string' : 'number' };
+    }
     return createTree(load<number>(KEYS.autoP, 4));
   });
   const [history, setHistory] = React.useState<HistItem[]>(() => load<HistItem[]>(KEYS.autoHistory, []));
   const [keyInput, setKeyInput] = React.useState('');
   const [highlight, setHighlight] = React.useState<Set<string>>(new Set());
-  const [lastKey, setLastKey] = React.useState<number | null>(null);
+  const [lastKey, setLastKey] = React.useState<Key | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
@@ -94,11 +97,13 @@ export function PlayAuto() {
     setHistory((h) => [{ id: Date.now() + Math.random(), text, steps }, ...h].slice(0, 60));
   }
 
-  function parseKeys(): number[] | null {
-    const r = parseKeyList(keyInput);
+  function parseKeys(): Key[] | null {
+    const r = parseKeyList(keyInput, tree.keyType);
     if (!r.ok) {
       if (r.reason === 'empty') {
         toast({ description: 'Debe ingresar un valor en el campo clave antes de realizar esta operación.' });
+      } else if (tree.keyType === 'string') {
+        setMessage('Ingresá texto separado por un único separador (,, ., - o espacio).');
       } else {
         setMessage('Ingresá un número entero o una lista con un único separador (,, ., - o espacio).');
       }
@@ -111,6 +116,14 @@ export function PlayAuto() {
     return `${n} ${n === 1 ? one : many}`;
   }
 
+  // El tipo de clave se elige por adelantado y solo con el árbol vacío.
+  function changeKeyType(next: BTree['keyType']) {
+    if (next === tree.keyType || countKeys(tree.root) > 0) return;
+    setTree({ p, root: null, keyType: next });
+    setHighlight(new Set());
+    setLastKey(null);
+  }
+
   function doInsert() {
     const ks = parseKeys();
     if (!ks) return;
@@ -118,19 +131,20 @@ export function PlayAuto() {
     let inserted = 0;
     let dups = 0;
     let touched: string[] = [];
-    let lastK: number | null = null;
+    let lastK: Key | null = null;
     for (const k of ks) {
-      if (contains(cur.root, k)) {
+      const kk = toTreeKey(cur, k);
+      if (contains(cur.root, kk)) {
         dups += 1;
-        pushHistory(`insertar ${k} → duplicada`);
+        pushHistory(`insertar ${kk} → duplicada`);
         continue;
       }
-      const r = insertKeyLogged(cur, k);
+      const r = insertKeyLogged(cur, kk);
       cur = r.tree;
       touched = r.touched;
-      lastK = k;
+      lastK = kk;
       inserted += 1;
-      pushHistory(`insertar ${k} → ok`, r.steps.map(formatStep));
+      pushHistory(`insertar ${kk} → ok`, r.steps.map(formatStep));
     }
     setTree(cur);
     setHighlight(new Set(touched));
@@ -152,15 +166,16 @@ export function PlayAuto() {
     let deleted = 0;
     let missing = 0;
     for (const k of ks) {
-      if (!contains(cur.root, k)) {
+      const kk = toTreeKey(cur, k);
+      if (!contains(cur.root, kk)) {
         missing += 1;
-        pushHistory(`eliminar ${k} → no existe`);
+        pushHistory(`eliminar ${kk} → no existe`);
         continue;
       }
-      const r = deleteKeyLogged(cur, k);
+      const r = deleteKeyLogged(cur, kk);
       cur = r.tree;
       deleted += 1;
-      pushHistory(`eliminar ${k} → ok`, r.steps.map(formatStep));
+      pushHistory(`eliminar ${kk} → ok`, r.steps.map(formatStep));
     }
     setTree(cur);
     setHighlight(new Set());
@@ -180,16 +195,17 @@ export function PlayAuto() {
     if (!ks) return;
     setLastKey(null);
     const path = new Set<string>();
-    const found: number[] = [];
-    const lost: number[] = [];
+    const found: Key[] = [];
+    const lost: Key[] = [];
     for (const k of ks) {
-      searchPath(tree.root, k).forEach((id) => path.add(id));
-      if (contains(tree.root, k)) {
-        found.push(k);
-        pushHistory(`buscar ${k} → encontrada`);
+      const kk = toTreeKey(tree, k);
+      searchPath(tree.root, kk).forEach((id) => path.add(id));
+      if (contains(tree.root, kk)) {
+        found.push(kk);
+        pushHistory(`buscar ${kk} → encontrada`);
       } else {
-        lost.push(k);
-        pushHistory(`buscar ${k} → no encontrada`);
+        lost.push(kk);
+        pushHistory(`buscar ${kk} → no encontrada`);
       }
     }
     setHighlight(path);
@@ -205,20 +221,22 @@ export function PlayAuto() {
 
   function doRandom() {
     const k = Math.floor(Math.random() * 100);
-    if (contains(tree.root, k)) {
+    const kk = toTreeKey(tree, k);
+    if (contains(tree.root, kk)) {
       doRandom();
       return;
     }
-    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, k);
+    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, kk);
     setTree(next);
     setHighlight(new Set(touched));
-    setLastKey(k);
-    pushHistory(`insertar ${k} → ok (aleatorio)`, steps.map(formatStep));
-    setMessage(`Clave ${k} insertada (aleatorio).`);
+    setLastKey(kk);
+    pushHistory(`insertar ${kk} → ok (aleatorio)`, steps.map(formatStep));
+    setMessage(`Clave ${kk} insertada (aleatorio).`);
   }
 
   function doClear() {
-    setTree({ p, root: null });
+    // Vaciar conserva el tipo elegido (es un ajuste como el orden).
+    setTree({ p, root: null, keyType: tree.keyType });
     setHighlight(new Set());
     setLastKey(null);
     setMessage('Árbol vaciado.');
@@ -229,14 +247,14 @@ export function PlayAuto() {
     const clamped = Math.min(ORDER_MAX, Math.max(ORDER_MIN, next));
     if (clamped === p) return;
     // Cambiar p reconstruye insertando las claves existentes en orden.
-    const keys: number[] = [];
+    const keys: Key[] = [];
     (function walk(n = tree.root) {
       if (!n) return;
       n.keys.forEach((k) => keys.push(k));
       n.children.forEach((c) => walk(c));
     })();
-    keys.sort((a, b) => a - b);
-    let rebuilt: BTree = { p: clamped, root: null };
+    keys.sort(cmpKey);
+    let rebuilt: BTree = { p: clamped, root: null, keyType: tree.keyType };
     for (const k of keys) rebuilt = insertKey(rebuilt, k);
     setP(clamped);
     setTree(rebuilt);
@@ -259,7 +277,10 @@ export function PlayAuto() {
         <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
       </div>
 
-      <OrderPicker id="orden-auto" p={p} onChange={changeP} />
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+        <OrderPicker id="orden-auto" p={p} onChange={changeP} />
+        <TypeSelector value={tree.keyType} onChange={changeKeyType} locked={countKeys(tree.root) > 0} />
+      </div>
 
       {tree.root === null ? (
         <div className="min-h-0 flex-1 p-3">

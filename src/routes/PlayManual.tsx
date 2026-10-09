@@ -7,8 +7,10 @@ import { Card, CardContent } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
+import { TypeSelector } from '../components/TypeSelector';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
+import type { Key } from '../lib/btree';
 import { KEYS, load, loadView, save } from '../lib/storage';
 import { cn } from '../lib/utils';
 
@@ -38,6 +40,7 @@ interface Draft {
   nodes: ManualNode[];
   rootId: string | null;
   p: number;
+  keyType: 'number' | 'string';
 }
 
 function seed(): Draft {
@@ -46,10 +49,10 @@ function seed(): Draft {
   const b: ManualNode = { id: uid(), keys: [5], slots: [null, null], x: 200, y: 850 };
   const c: ManualNode = { id: uid(), keys: [15], slots: [null, null], x: 1100, y: 850 };
   a.slots = [b.id, c.id, null];
-  return { nodes: [a, b, c], rootId: a.id, p: 4 };
+  return { nodes: [a, b, c], rootId: a.id, p: 4, keyType: 'number' };
 }
 
-function fixSlots(keys: number[], slots: (string | null)[]): (string | null)[] {
+function fixSlots(keys: Key[], slots: (string | null)[]): (string | null)[] {
   const need = keys.length + 1;
   const next = slots.slice(0, need);
   while (next.length < need) next.push(null);
@@ -59,7 +62,13 @@ function fixSlots(keys: number[], slots: (string | null)[]): (string | null)[] {
 export function PlayManual() {
   const [draft, setDraft] = React.useState<Draft>(() => {
     const saved = load<Draft | null>(KEYS.manual, null);
-    if (saved && Array.isArray(saved.nodes)) return { ...saved, p: Math.min(ORDER_MAX, Math.max(ORDER_MIN, saved.p || 4)) };
+    if (saved && Array.isArray(saved.nodes)) {
+      return {
+        ...saved,
+        p: Math.min(ORDER_MAX, Math.max(ORDER_MIN, saved.p || 4)),
+        keyType: saved.keyType === 'string' ? 'string' : 'number',
+      };
+    }
     return seed();
   });
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
@@ -70,7 +79,16 @@ export function PlayManual() {
   // centro del viewport para no perderse fuera de vista.
   const viewRef = React.useRef({ x: 16, y: 16, k: 1, w: 0, h: 0 });
 
-  const { nodes, rootId, p } = draft;
+  const { nodes, rootId, p, keyType } = draft;
+  const isStr = keyType === 'string';
+  // El tipo se elige por adelantado y solo sin claves en ningún nodo.
+  const typeLocked = nodes.some((n) => n.keys.length > 0);
+
+  function changeKeyType(next: 'number' | 'string') {
+    if (next === keyType || nodes.some((n) => n.keys.length > 0)) return;
+    setDraft((d) => ({ ...d, keyType: next }));
+    setResult(null);
+  }
 
   // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
   // debounce en cada cambio (más un volcado al desmontar por cambio de modo).
@@ -226,10 +244,21 @@ export function PlayManual() {
     update((d) => ({ ...d, rootId: id }));
   }
 
+  function parseCell(raw: string): Key | null {
+    // En modo texto todo es cadena; en numérico solo enteros.
+    if (isStr) {
+      const v = raw.trim();
+      return v === '' ? null : v;
+    }
+    const v = Number(raw.trim());
+    if (raw.trim() === '' || !Number.isInteger(v)) return null;
+    return v;
+  }
+
   function addKey(id: string, raw: string) {
     // El modo manual es libre: se aceptan duplicados (los reporta Validar).
-    const v = Number(raw.trim());
-    if (raw.trim() === '' || !Number.isInteger(v)) return;
+    const v = parseCell(raw);
+    if (v === null) return;
     const n = nodes.find((x) => x.id === id);
     if (!n || n.keys.length >= p - 1) return;
     update((d) => {
@@ -272,8 +301,8 @@ export function PlayManual() {
   });
 
   function editKey(id: string, index: number, raw: string) {
-    const v = Number(raw);
-    if (raw.trim() === '' || !Number.isInteger(v)) return;
+    const v = parseCell(raw);
+    if (v === null) return;
     update((d) => {
       const n = d.nodes.find((x) => x.id === id);
       if (!n) return d;
@@ -290,8 +319,8 @@ export function PlayManual() {
       removeKey(id, slot);
       return;
     }
-    const v = Number(raw);
-    if (!Number.isInteger(v)) return;
+    const v = parseCell(raw);
+    if (v === null) return;
     if (nodes.find((x) => x.id === id)?.keys[slot] === v) return;
     editKey(id, slot, raw);
   }
@@ -324,7 +353,7 @@ export function PlayManual() {
   }
 
   function doValidate() {
-    setResult(validateManualTree(nodes, p, rootId));
+    setResult(validateManualTree(nodes, p, rootId, keyType));
     setSheetOpen(true);
   }
 
@@ -370,19 +399,23 @@ export function PlayManual() {
         <Badge>orden p = {p}</Badge>
         <Badge variant="secondary">máx {p - 1} claves</Badge>
         <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
+        <Badge variant="secondary">{keyType === 'string' ? 'texto' : 'numérico'}</Badge>
         {rootId ? <Badge variant="outline">raíz elegida</Badge> : <Badge variant="error">sin raíz</Badge>}
         {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
       </div>
 
-      <OrderPicker
-        id="orden-manual"
-        p={p}
-        onChange={(next) => {
-          setDraft((d) => ({ ...d, p: next }));
-          setRedoStack([]);
-          setResult(null);
-        }}
-      />
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+        <OrderPicker
+          id="orden-manual"
+          p={p}
+          onChange={(next) => {
+            setDraft((d) => ({ ...d, p: next }));
+            setRedoStack([]);
+            setResult(null);
+          }}
+        />
+        <TypeSelector value={keyType} onChange={changeKeyType} locked={typeLocked} />
+      </div>
 
       {nodes.length === 0 ? (
         <div className="min-h-0 flex-1 p-3">
@@ -495,7 +528,7 @@ export function PlayManual() {
                                 defaultValue={n.keys[slot]}
                                 key={`${n.id}-${slot}-${n.keys[slot]}`}
                                 data-key-cell={`${n.id}:${slot}`}
-                                inputMode="numeric"
+                                inputMode={isStr ? 'text' : 'numeric'}
                                 aria-label={`Clave ${slot + 1}`}
                                 className={cn('h-8 min-w-0 flex-1 select-text rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
                                 onBlur={(e) => commitKeyCell(n.id, slot, e.target.value)}
@@ -515,7 +548,7 @@ export function PlayManual() {
                               <Input
                                 key={`${n.id}-empty-${slot}`}
                                 data-empty-cell={n.id}
-                                inputMode="numeric"
+                                inputMode={isStr ? 'text' : 'numeric'}
                                 aria-label={`Clave vacía ${slot + 1}`}
                                 className="h-8 min-w-0 flex-1 select-text rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium text-muted-foreground shadow-none focus-visible:ring-0"
                                 onBlur={(e) => { addKey(n.id, e.target.value); e.target.value = ''; }}
