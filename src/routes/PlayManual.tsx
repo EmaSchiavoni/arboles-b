@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ArrowDownToLine, Crown, GripVertical, Plus, Trash2, X, ShieldCheck, Eraser } from 'lucide-react';
+import { ArrowDownToLine, Crown, GripVertical, Plus, Trash2, X, ShieldCheck, Eraser, Undo2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -65,7 +65,7 @@ export function PlayManual() {
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
   const [result, setResult] = React.useState<ValidationResult | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
-  const dragRef = React.useRef<{ id: string; nx: number; ny: number; sx: number; sy: number } | null>(null);
+  const dragRef = React.useRef<{ id: string; nx: number; ny: number; sx: number; sy: number; snap: Draft } | null>(null);
   // Vista actual del canvas (con su tamaño): los nodos nuevos nacen en el
   // centro del viewport para no perderse fuera de vista.
   const viewRef = React.useRef({ x: 16, y: 16, k: 1, w: 0, h: 0 });
@@ -82,6 +82,12 @@ export function PlayManual() {
     return { x: cx, y: cy };
   });
 
+  // Pila de deshacer (LIFO): snapshots previos a cada mutación, hasta 6
+  // (al superar el tope se descarta el más viejo, FIFO). Solo vive en memoria.
+  const [undoStack, setUndoStack] = React.useState<Draft[]>([]);
+  const draftRef = React.useRef(draft);
+  draftRef.current = draft;
+
   React.useEffect(() => {
     save(KEYS.manual, draft);
   }, [draft]);
@@ -94,6 +100,22 @@ export function PlayManual() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Ctrl/Cmd+Z deshace la última acción (no interfiere con el undo nativo
+  // de los inputs: si el foco está escribiendo, no hace nada).
+  React.useEffect(() => {
+    function onUndoKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+      if (e.key !== 'z' && e.key !== 'Z') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (undoStack.length === 0) return;
+      e.preventDefault();
+      doUndo();
+    }
+    window.addEventListener('keydown', onUndoKey);
+    return () => window.removeEventListener('keydown', onUndoKey);
+  });
+
   const errorIds = React.useMemo(() => new Set((result?.issues ?? []).map((i) => i.nodeId).filter(Boolean) as string[]), [result]);
 
   const edges = React.useMemo(
@@ -101,10 +123,26 @@ export function PlayManual() {
     [nodes],
   );
 
+  function pushUndo(snapshot: Draft) {
+    setUndoStack((s) => [...s, structuredClone(snapshot)].slice(-6));
+  }
+
   function update(fn: (d: Draft) => Draft) {
+    pushUndo(draft);
     setDraft((d) => fn(structuredClone(d)));
     setResult(null);
     setSheetOpen(false);
+  }
+
+  function doUndo() {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setUndoStack((s) => s.slice(0, -1));
+    // Se restauran nodos y raíz; el orden p actual se conserva.
+    setDraft((d) => ({ ...structuredClone(prev), p: d.p }));
+    setResult(null);
+    setSheetOpen(false);
+    setLinking(null);
   }
 
   function addNode() {
@@ -246,6 +284,7 @@ export function PlayManual() {
   }
 
   function doClear() {
+    pushUndo(draft);
     setDraft((d) => ({ ...d, nodes: [], rootId: null }));
     setResult(null);
     setSheetOpen(false);
@@ -255,7 +294,7 @@ export function PlayManual() {
   function onNodePointerDown(e: React.PointerEvent, id: string) {
     const n = nodes.find((x) => x.id === id);
     if (!n) return;
-    dragRef.current = { id, nx: n.x, ny: n.y, sx: e.clientX, sy: e.clientY };
+    dragRef.current = { id, nx: n.x, ny: n.y, sx: e.clientX, sy: e.clientY, snap: structuredClone(draft) };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
   function onNodePointerMove(e: React.PointerEvent) {
@@ -267,7 +306,15 @@ export function PlayManual() {
     setDraft((prev) => ({ ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x: Math.max(0, nx), y: Math.max(0, ny) } : n)) }));
   }
   function onNodePointerUp() {
+    // El arrastre cuenta como una sola acción: si el nodo se movió, se guarda
+    // la posición previa para poder deshacerla.
+    const d = dragRef.current;
     dragRef.current = null;
+    if (!d) return;
+    const cur = draftRef.current.nodes.find((n) => n.id === d.id);
+    if (cur && (cur.x !== d.nx || cur.y !== d.ny)) {
+      setUndoStack((s) => [...s, d.snap].slice(-6));
+    }
   }
 
   return (
@@ -468,6 +515,11 @@ export function PlayManual() {
       <BottomToolbar>
         <Button size="sm" onClick={addNode}><Plus />Nodo</Button>
         <Button size="sm" variant="secondary" onClick={doValidate}><ShieldCheck />Validar</Button>
+        {undoStack.length > 0 && (
+          <Button size="sm" variant="outline" onClick={doUndo} title="Deshacer última acción (Ctrl+Z)">
+            <Undo2 />Deshacer
+          </Button>
+        )}
         {linking && <Button size="sm" variant="outline" onClick={() => setLinking(null)}><X />Cancelar</Button>}
         <Button size="sm" variant="ghost" onClick={doClear} title="Borrar todo"><Eraser /></Button>
       </BottomToolbar>
