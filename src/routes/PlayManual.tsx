@@ -6,13 +6,11 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { BottomToolbar } from '../components/BottomToolbar';
+import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { validateManualTree, type ManualNode, type ValidationResult } from '../lib/validate';
 import { KEYS, load, save } from '../lib/storage';
 import { cn } from '../lib/utils';
-
-const MIN_P = 3;
-const MAX_P = 8;
 
 // Tabla completa siempre visible: p columnas de puntero (delgadas) + p-1
 // celdas de clave, una al lado de otra (nodo lleno: 2p-1 columnas). La columna
@@ -61,7 +59,7 @@ function fixSlots(keys: number[], slots: (string | null)[]): (string | null)[] {
 export function PlayManual() {
   const [draft, setDraft] = React.useState<Draft>(() => {
     const saved = load<Draft | null>(KEYS.manual, null);
-    if (saved && Array.isArray(saved.nodes)) return { ...saved, p: Math.min(MAX_P, Math.max(MIN_P, saved.p || 4)) };
+    if (saved && Array.isArray(saved.nodes)) return { ...saved, p: Math.min(ORDER_MAX, Math.max(ORDER_MIN, saved.p || 4)) };
     return seed();
   });
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
@@ -276,19 +274,14 @@ export function PlayManual() {
         {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <label htmlFor="orden-manual" className="text-sm text-muted-foreground">Orden p ({MIN_P}–{MAX_P})</label>
-        <input
-          id="orden-manual"
-          type="range"
-          min={MIN_P}
-          max={MAX_P}
-          value={p}
-          onChange={(e) => { setDraft((d) => ({ ...d, p: Number(e.target.value) })); setResult(null); }}
-          className="h-2 w-40 accent-zinc-900 dark:accent-zinc-100"
-        />
-        <span className="text-sm font-medium">{p}</span>
-      </div>
+      <OrderPicker
+        id="orden-manual"
+        p={p}
+        onChange={(next) => {
+          setDraft((d) => ({ ...d, p: next }));
+          setResult(null);
+        }}
+      />
 
       {nodes.length === 0 ? (
         <div className="min-h-0 flex-1 p-3">

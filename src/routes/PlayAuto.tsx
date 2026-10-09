@@ -7,6 +7,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { BottomToolbar } from '../components/BottomToolbar';
+import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
@@ -20,9 +21,6 @@ interface HistItem {
   text: string;
   steps?: string[];
 }
-
-const MIN_P = 3;
-const MAX_P = 8;
 
 // Tabla completa siempre visible: p columnas de puntero (delgadas) + p-1
 // celdas de clave. Las celdas vacías se muestran como cajas vacías.
@@ -42,7 +40,7 @@ export function PlayAuto() {
   const [p, setP] = React.useState<number>(() => load<number>(KEYS.autoP, 4));
   const [tree, setTree] = React.useState<BTree>(() => {
     const saved = load<{ p: number; root: BTree['root'] } | null>(KEYS.autoTree, null);
-    if (saved && saved.p >= MIN_P && saved.p <= MAX_P) return { p: saved.p, root: saved.root };
+    if (saved && saved.p >= ORDER_MIN && saved.p <= ORDER_MAX) return { p: saved.p, root: saved.root };
     return createTree(load<number>(KEYS.autoP, 4));
   });
   const [history, setHistory] = React.useState<HistItem[]>(() => load<HistItem[]>(KEYS.autoHistory, []));
@@ -152,7 +150,7 @@ export function PlayAuto() {
   }
 
   function changeP(next: number) {
-    const clamped = Math.min(MAX_P, Math.max(MIN_P, next));
+    const clamped = Math.min(ORDER_MAX, Math.max(ORDER_MIN, next));
     if (clamped === p) return;
     // Cambiar p reconstruye insertando las claves existentes en orden.
     const keys: number[] = [];
@@ -185,19 +183,7 @@ export function PlayAuto() {
         <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <label htmlFor="orden-auto" className="text-sm text-muted-foreground">Orden p ({MIN_P}–{MAX_P})</label>
-        <input
-          id="orden-auto"
-          type="range"
-          min={MIN_P}
-          max={MAX_P}
-          value={p}
-          onChange={(e) => changeP(Number(e.target.value))}
-          className="h-2 w-40 accent-zinc-900 dark:accent-zinc-100"
-        />
-        <span className="text-sm font-medium">{p}</span>
-      </div>
+      <OrderPicker id="orden-auto" p={p} onChange={changeP} />
 
       {tree.root === null ? (
         <div className="min-h-0 flex-1 p-3">
