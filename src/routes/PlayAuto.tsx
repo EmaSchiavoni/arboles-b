@@ -4,6 +4,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { ScrollArea } from '../components/ui/scroll-area';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
@@ -265,51 +267,53 @@ export function PlayAuto() {
                   {message}
                 </p>
               )}
-              {showHistory && (
-                <Card className="pointer-events-auto mx-auto max-h-56 w-full max-w-md overflow-auto">
-                  <CardContent>
-                    <p className="mb-2 text-sm font-medium">Historial</p>
-                    {history.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
-                    ) : (
-                      <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
-                        {history.map((h) => (
-                          <li key={h.id} className="rounded-2xl border px-2 py-1">
-                            <div className="flex items-center gap-1">
-                              <span className="min-w-0 flex-1">· {h.text}</span>
-                              {h.steps && h.steps.length > 0 && (
-                                <button
-                                  type="button"
-                                  title={openSteps === h.id ? 'Ocultar pasos' : 'Ver pasos'}
-                                  onClick={() => setOpenSteps((o) => (o === h.id ? null : h.id))}
-                                  className="flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                >
-                                  <ListCollapse className="size-3" />
-                                  pasos
-                                </button>
-                              )}
-                            </div>
-                            {openSteps === h.id && h.steps && h.steps.length > 0 && (
-                              <div className="mt-1 flex flex-wrap items-center gap-1">
-                                {h.steps.map((s, i) => (
-                                  <span key={i} className="contents">
-                                    {i > 0 && <ChevronRight className="size-3 shrink-0 text-zinc-400 dark:text-zinc-500" />}
-                                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] dark:bg-zinc-800">
-                                      {s}
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
+          <Dialog open={showHistory} onOpenChange={setShowHistory}>
+            <DialogContent className="max-h-[70dvh] w-[calc(100vw-2rem)] sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Historial</DialogTitle>
+              </DialogHeader>
+              {history.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
+              ) : (
+                <ScrollArea className="max-h-[50dvh] pr-3">
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {history.map((h) => (
+                      <li key={h.id} className="rounded-2xl border px-2 py-1">
+                        <div className="flex items-center gap-1">
+                          <span className="min-w-0 flex-1">· {h.text}</span>
+                          {h.steps && h.steps.length > 0 && (
+                            <button
+                              type="button"
+                              title={openSteps === h.id ? 'Ocultar pasos' : 'Ver pasos'}
+                              onClick={() => setOpenSteps((o) => (o === h.id ? null : h.id))}
+                              className="flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                              <ListCollapse className="size-3" />
+                              pasos
+                            </button>
+                          )}
+                        </div>
+                        {openSteps === h.id && h.steps && h.steps.length > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {h.steps.map((s, i) => (
+                              <span key={i} className="contents">
+                                {i > 0 && <ChevronRight className="size-3 shrink-0 text-zinc-400 dark:text-zinc-500" />}
+                                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] dark:bg-zinc-800">
+                                  {s}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
@@ -331,8 +335,8 @@ export function PlayAuto() {
         <div className="flex items-center justify-center gap-2 max-[510px]:w-full">
           <Button size="sm" variant="ghost" onClick={doRandom} title="Insertar clave aleatoria"><Dices />Azar</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirmClear(true)} title="Vaciar árbol"><Eraser />Vaciar</Button>
-          <Button size="sm" variant="outline" onClick={() => setShowHistory((s) => !s)}>
-            {showHistory ? 'Ocultar' : 'Historial'}
+          <Button size="sm" variant="outline" onClick={() => setShowHistory(true)}>
+            Historial
           </Button>
         </div>
       </BottomToolbar>
