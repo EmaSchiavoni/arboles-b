@@ -12,6 +12,7 @@ import { TreeCanvas } from '../components/TreeCanvas';
 import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
+import { parseKeyList } from '../lib/keys';
 import { toast } from '../components/ui/use-toast';
 import { ConfirmDialog } from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
@@ -70,61 +71,113 @@ export function PlayAuto() {
     setHistory((h) => [{ id: Date.now() + Math.random(), text, steps }, ...h].slice(0, 60));
   }
 
-  function parseKey(): number | null {
-    if (keyInput.trim() === '') {
-      toast({ description: 'Debe ingresar un valor en el campo clave antes de realizar esta operación.' });
+  function parseKeys(): number[] | null {
+    const r = parseKeyList(keyInput);
+    if (!r.ok) {
+      if (r.reason === 'empty') {
+        toast({ description: 'Debe ingresar un valor en el campo clave antes de realizar esta operación.' });
+      } else {
+        setMessage('Ingresá un número entero o una lista con un único separador (,, ., - o espacio).');
+      }
       return null;
     }
-    const v = Number(keyInput.trim());
-    if (!Number.isInteger(v)) {
-      setMessage('Ingresá un número entero.');
-      return null;
-    }
-    return v;
+    return r.keys;
+  }
+
+  function plural(n: number, one: string, many: string) {
+    return `${n} ${n === 1 ? one : many}`;
   }
 
   function doInsert() {
-    const k = parseKey();
-    if (k === null) return;
-    if (contains(tree.root, k)) {
-      setMessage(`La clave ${k} ya existe.`);
-      pushHistory(`insertar ${k} → duplicada`);
-      return;
+    const ks = parseKeys();
+    if (!ks) return;
+    let cur = { ...tree, p };
+    let inserted = 0;
+    let dups = 0;
+    let touched: string[] = [];
+    let lastK: number | null = null;
+    for (const k of ks) {
+      if (contains(cur.root, k)) {
+        dups += 1;
+        pushHistory(`insertar ${k} → duplicada`);
+        continue;
+      }
+      const r = insertKeyLogged(cur, k);
+      cur = r.tree;
+      touched = r.touched;
+      lastK = k;
+      inserted += 1;
+      pushHistory(`insertar ${k} → ok`, r.steps.map(formatStep));
     }
-    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, k);
-    setTree(next);
+    setTree(cur);
     setHighlight(new Set(touched));
-    setLastKey(k);
-    setMessage(`Clave ${k} insertada.`);
-    pushHistory(`insertar ${k} → ok`, steps.map(formatStep));
+    setLastKey(lastK);
+    if (ks.length === 1) {
+      setMessage(inserted === 1 ? `Clave ${ks[0]} insertada.` : `La clave ${ks[0]} ya existe.`);
+    } else {
+      const parts = [plural(inserted, 'insertada', 'insertadas')];
+      if (dups > 0) parts.push(plural(dups, 'duplicada', 'duplicadas'));
+      setMessage(parts.join(', ') + '.');
+    }
     setKeyInput('');
   }
 
   function doDelete() {
-    const k = parseKey();
-    if (k === null) return;
-    if (!contains(tree.root, k)) {
-      setMessage(`La clave ${k} no existe.`);
-      pushHistory(`eliminar ${k} → no existe`);
-      return;
+    const ks = parseKeys();
+    if (!ks) return;
+    let cur = { ...tree, p };
+    let deleted = 0;
+    let missing = 0;
+    for (const k of ks) {
+      if (!contains(cur.root, k)) {
+        missing += 1;
+        pushHistory(`eliminar ${k} → no existe`);
+        continue;
+      }
+      const r = deleteKeyLogged(cur, k);
+      cur = r.tree;
+      deleted += 1;
+      pushHistory(`eliminar ${k} → ok`, r.steps.map(formatStep));
     }
-    const { tree: next, steps } = deleteKeyLogged({ ...tree, p }, k);
-    setTree(next);
+    setTree(cur);
     setHighlight(new Set());
     setLastKey(null);
-    setMessage(`Clave ${k} eliminada.`);
-    pushHistory(`eliminar ${k} → ok`, steps.map(formatStep));
+    if (ks.length === 1) {
+      setMessage(deleted === 1 ? `Clave ${ks[0]} eliminada.` : `La clave ${ks[0]} no existe.`);
+    } else {
+      const parts = [plural(deleted, 'eliminada', 'eliminadas')];
+      if (missing > 0) parts.push(plural(missing, 'no existía', 'no existían'));
+      setMessage(parts.join(', ') + '.');
+    }
     setKeyInput('');
   }
 
   function doSearch() {
-    const k = parseKey();
-    if (k === null) return;
-    const found = contains(tree.root, k);
-    setHighlight(new Set(searchPath(tree.root, k)));
+    const ks = parseKeys();
+    if (!ks) return;
     setLastKey(null);
-    setMessage(found ? `Clave ${k} encontrada.` : `Clave ${k} no encontrada.`);
-    pushHistory(`buscar ${k} → ${found ? 'encontrada' : 'no encontrada'}`);
+    const path = new Set<string>();
+    const found: number[] = [];
+    const lost: number[] = [];
+    for (const k of ks) {
+      searchPath(tree.root, k).forEach((id) => path.add(id));
+      if (contains(tree.root, k)) {
+        found.push(k);
+        pushHistory(`buscar ${k} → encontrada`);
+      } else {
+        lost.push(k);
+        pushHistory(`buscar ${k} → no encontrada`);
+      }
+    }
+    setHighlight(path);
+    if (ks.length === 1) {
+      setMessage(found.length === 1 ? `Clave ${ks[0]} encontrada.` : `Clave ${ks[0]} no encontrada.`);
+    } else {
+      const parts: string[] = [];
+      if (found.length > 0) parts.push(`encontradas: ${found.join(', ')}`);
+      if (lost.length > 0) parts.push(`no encontradas: ${lost.join(', ')}`);
+      setMessage(parts.join('. ') + '.');
+    }
   }
 
   function doRandom() {
@@ -310,9 +363,9 @@ export function PlayAuto() {
             onChange={(e) => setKeyInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') doInsert(); }}
             inputMode="numeric"
-            placeholder="Clave…"
-            aria-label="Clave numérica"
-            className="w-24"
+            placeholder="Claves: 1, 2, 3"
+            aria-label="Claves (una sola o lista separada por coma, punto, guion o espacio)"
+            className="w-36"
           />
           <Button size="sm" onClick={doInsert} title="Insertar" aria-label="Insertar" className="px-2"><Plus /></Button>
           <Button size="sm" variant="secondary" onClick={doDelete} title="Eliminar" aria-label="Eliminar" className="px-2"><Trash2 /></Button>
