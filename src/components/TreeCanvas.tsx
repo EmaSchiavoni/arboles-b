@@ -36,9 +36,11 @@ interface Props<T extends CanvasNode> {
   nodeHeight?: number;
   // Punto virtual a centrar en el contenedor al montar (una sola vez).
   initialCenter?: { x: number; y: number } | null;
+  // Notifica cada cambio de vista (paneo/zoom) al padre.
+  onViewChange?: (view: { x: number; y: number; k: number }) => void;
 }
 
-export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight, initialCenter }: Props<T>) {
+export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, highlightIds, errorIds, linking, onBackgroundClick, extraSvg, getNodeWidth, getSlotX, nodeHeight, initialCenter, onViewChange }: Props<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [pan, setPan] = React.useState({ x: 16, y: 16, k: 1 });
   const panRef = React.useRef(pan);
@@ -54,6 +56,15 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
     panRef.current = next;
     setPan(next);
   }
+
+  // Avisa al padre de cada cambio de vista (el callback guarda en ref,
+  // no dispara renders, así que no hay riesgo de bucle).
+  const lastNotified = React.useRef(pan);
+  React.useEffect(() => {
+    if (lastNotified.current === pan) return;
+    lastNotified.current = pan;
+    onViewChange?.(pan);
+  });
 
   // Centrado inicial del punto virtual dado (una sola vez al montar).
   const didCenter = React.useRef(false);

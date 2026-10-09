@@ -67,7 +67,11 @@ export function PlayManual() {
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
   const [result, setResult] = React.useState<ValidationResult | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
-  const dragRef = React.useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const dragRef = React.useRef<{ id: string; nx: number; ny: number; sx: number; sy: number } | null>(null);
+  // Zoom actual del canvas: el arrastre convierte píxeles de pantalla a
+  // unidades virtuales dividiendo por k (si no, con zoom el nodo se mueve
+  // más o menos que el mouse).
+  const viewRef = React.useRef({ x: 16, y: 16, k: 1 });
 
   const { nodes, rootId, p } = draft;
 
@@ -247,14 +251,15 @@ export function PlayManual() {
   function onNodePointerDown(e: React.PointerEvent, id: string) {
     const n = nodes.find((x) => x.id === id);
     if (!n) return;
-    dragRef.current = { id, dx: e.clientX - n.x, dy: e.clientY - n.y };
+    dragRef.current = { id, nx: n.x, ny: n.y, sx: e.clientX, sy: e.clientY };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
   function onNodePointerMove(e: React.PointerEvent) {
     const d = dragRef.current;
     if (!d) return;
-    const nx = e.clientX - d.dx;
-    const ny = e.clientY - d.dy;
+    const k = viewRef.current.k || 1;
+    const nx = d.nx + (e.clientX - d.sx) / k;
+    const ny = d.ny + (e.clientY - d.sy) / k;
     setDraft((prev) => ({ ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x: Math.max(0, nx), y: Math.max(0, ny) } : n)) }));
   }
   function onNodePointerUp() {
@@ -304,6 +309,9 @@ export function PlayManual() {
           getNodeWidth={() => manualNodeWidth(p)}
           getSlotX={(node, slot) => manualSlotX(node.x, p, slot)}
           initialCenter={initialCenter}
+          onViewChange={(v) => {
+            viewRef.current = v;
+          }}
           renderNode={(n) => {
             const isRoot = n.id === rootId;
             const isTarget = !!linking && linking.nodeId !== n.id;
