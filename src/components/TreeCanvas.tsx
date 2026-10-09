@@ -65,13 +65,14 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const target: HTMLDivElement = el;
     function measure() {
-      const r = el.getBoundingClientRect();
+      const r = target.getBoundingClientRect();
       sizeRef.current = { w: r.width, h: r.height };
     }
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    ro.observe(target);
     return () => ro.disconnect();
   }, []);
   React.useEffect(() => {
