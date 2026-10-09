@@ -139,7 +139,9 @@ export function contains(root: BNode | null, key: number): boolean {
 // cantidad impar de claves y ambos lados quedan con >= minKeys, para todo p.
 
 function splitOverflow(node: BNode, p: number, steps?: Step[]): { median: number; right: BNode } {
-  const mid = Math.floor(p / 2);
+  // Normalización de la cátedra: con cantidad par de claves (p par) hay dos
+  // medianas candidatas y se elige la de la IZQUIERDA (la menor).
+  const mid = Math.ceil(p / 2) - 1;
   steps?.push({ t: 'overflow', keys: [...node.keys], max: maxKeys(p) });
   const median = node.keys[mid];
   const right = makeNode(
