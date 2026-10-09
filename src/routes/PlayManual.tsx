@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ArrowDownToLine, Crown, GripVertical, Plus, Trash2, X, ShieldCheck, Eraser, Undo2 } from 'lucide-react';
+import { ArrowDownToLine, Crown, GripVertical, Plus, Trash2, X, ShieldCheck, Eraser, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -85,6 +85,9 @@ export function PlayManual() {
   // Pila de deshacer (LIFO): snapshots previos a cada mutación, hasta 6
   // (al superar el tope se descarta el más viejo, FIFO). Solo vive en memoria.
   const [undoStack, setUndoStack] = React.useState<Draft[]>([]);
+  // Pila de rehacer: acciones deshechas que se pueden repetir. Cualquier
+  // acción manual la vacía.
+  const [redoStack, setRedoStack] = React.useState<Draft[]>([]);
   const draftRef = React.useRef(draft);
   draftRef.current = draft;
 
@@ -100,17 +103,23 @@ export function PlayManual() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Ctrl/Cmd+Z deshace la última acción (no interfiere con el undo nativo
-  // de los inputs: si el foco está escribiendo, no hace nada).
+  // Ctrl/Cmd+Z deshace, Ctrl/Cmd+Shift+Z o Ctrl/Cmd+Y rehace (no interfieren
+  // con el undo/redo nativo de los inputs: si el foco está escribiendo, nada).
   React.useEffect(() => {
     function onUndoKey(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.shiftKey) return;
-      if (e.key !== 'z' && e.key !== 'Z') return;
+      if (!(e.ctrlKey || e.metaKey)) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (undoStack.length === 0) return;
-      e.preventDefault();
-      doUndo();
+      const lower = e.key.toLowerCase();
+      if (lower === 'z' && !e.shiftKey) {
+        if (undoStack.length === 0) return;
+        e.preventDefault();
+        doUndo();
+      } else if ((lower === 'z' && e.shiftKey) || lower === 'y') {
+        if (redoStack.length === 0) return;
+        e.preventDefault();
+        doRedo();
+      }
     }
     window.addEventListener('keydown', onUndoKey);
     return () => window.removeEventListener('keydown', onUndoKey);
@@ -129,6 +138,7 @@ export function PlayManual() {
 
   function update(fn: (d: Draft) => Draft) {
     pushUndo(draft);
+    setRedoStack([]);
     setDraft((d) => fn(structuredClone(d)));
     setResult(null);
     setSheetOpen(false);
@@ -138,8 +148,21 @@ export function PlayManual() {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
     setUndoStack((s) => s.slice(0, -1));
+    setRedoStack((s) => [...s, structuredClone(draft)]);
     // Se restauran nodos y raíz; el orden p actual se conserva.
     setDraft((d) => ({ ...structuredClone(prev), p: d.p }));
+    setResult(null);
+    setSheetOpen(false);
+    setLinking(null);
+  }
+
+  function doRedo() {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack((s) => s.slice(0, -1));
+    setUndoStack((s) => [...s, structuredClone(draft)].slice(-6));
+    // Se restauran nodos y raíz; el orden p actual se conserva.
+    setDraft((d) => ({ ...structuredClone(next), p: d.p }));
     setResult(null);
     setSheetOpen(false);
     setLinking(null);
@@ -285,6 +308,7 @@ export function PlayManual() {
 
   function doClear() {
     pushUndo(draft);
+    setRedoStack([]);
     setDraft((d) => ({ ...d, nodes: [], rootId: null }));
     setResult(null);
     setSheetOpen(false);
@@ -314,6 +338,7 @@ export function PlayManual() {
     const cur = draftRef.current.nodes.find((n) => n.id === d.id);
     if (cur && (cur.x !== d.nx || cur.y !== d.ny)) {
       setUndoStack((s) => [...s, d.snap].slice(-6));
+      setRedoStack([]);
     }
   }
 
@@ -332,6 +357,7 @@ export function PlayManual() {
         p={p}
         onChange={(next) => {
           setDraft((d) => ({ ...d, p: next }));
+          setRedoStack([]);
           setResult(null);
         }}
       />
@@ -518,6 +544,11 @@ export function PlayManual() {
         {undoStack.length > 0 && (
           <Button size="sm" variant="outline" onClick={doUndo} title="Deshacer última acción (Ctrl+Z)">
             <Undo2 />Deshacer
+          </Button>
+        )}
+        {redoStack.length > 0 && (
+          <Button size="sm" variant="outline" onClick={doRedo} title="Rehacer acción (Ctrl+Shift+Z)">
+            <Redo2 />Rehacer
           </Button>
         )}
         {linking && <Button size="sm" variant="outline" onClick={() => setLinking(null)}><X />Cancelar</Button>}
