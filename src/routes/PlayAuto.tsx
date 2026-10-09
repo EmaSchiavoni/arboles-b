@@ -1,12 +1,12 @@
 import * as React from 'react';
-import { Dices, Eraser, Plus, Search, Trash2 } from 'lucide-react';
+import { Dices, Eraser, Plus, Search, Trash2, ChevronRight, ListCollapse } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { TreeCanvas } from '../components/TreeCanvas';
-import { contains, countKeys, countNodes, createTree, deleteKey, height, insertKey, insertKeyTracked, searchPath, type BTree } from '../lib/btree';
+import { contains, countKeys, countNodes, createTree, deleteKeyLogged, formatStep, height, insertKey, insertKeyLogged, searchPath, type BTree } from '../lib/btree';
 import { layoutTree } from '../lib/layout';
 import { KEYS, load, save } from '../lib/storage';
 import { toast } from '../components/ui/use-toast';
@@ -16,6 +16,7 @@ import { cn } from '../lib/utils';
 interface HistItem {
   id: number;
   text: string;
+  steps?: string[];
 }
 
 const MIN_P = 3;
@@ -49,6 +50,7 @@ export function PlayAuto() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
+  const [openSteps, setOpenSteps] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     save(KEYS.autoP, p);
@@ -64,8 +66,8 @@ export function PlayAuto() {
     save(KEYS.autoHistory, history.slice(0, 60));
   }, [history]);
 
-  function pushHistory(text: string) {
-    setHistory((h) => [{ id: Date.now() + Math.random(), text }, ...h].slice(0, 60));
+  function pushHistory(text: string, steps: string[] = []) {
+    setHistory((h) => [{ id: Date.now() + Math.random(), text, steps }, ...h].slice(0, 60));
   }
 
   function parseKey(): number | null {
@@ -89,12 +91,12 @@ export function PlayAuto() {
       pushHistory(`insertar ${k} → duplicada`);
       return;
     }
-    const { tree: next, touched } = insertKeyTracked({ ...tree, p }, k);
+    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, k);
     setTree(next);
     setHighlight(new Set(touched));
     setLastKey(k);
     setMessage(`Clave ${k} insertada.`);
-    pushHistory(`insertar ${k} → ok`);
+    pushHistory(`insertar ${k} → ok`, steps.map(formatStep));
     setKeyInput('');
   }
 
@@ -106,11 +108,12 @@ export function PlayAuto() {
       pushHistory(`eliminar ${k} → no existe`);
       return;
     }
-    setTree(deleteKey({ ...tree, p }, k));
+    const { tree: next, steps } = deleteKeyLogged({ ...tree, p }, k);
+    setTree(next);
     setHighlight(new Set());
     setLastKey(null);
     setMessage(`Clave ${k} eliminada.`);
-    pushHistory(`eliminar ${k} → ok`);
+    pushHistory(`eliminar ${k} → ok`, steps.map(formatStep));
     setKeyInput('');
   }
 
@@ -130,11 +133,11 @@ export function PlayAuto() {
       doRandom();
       return;
     }
-    const { tree: next, touched } = insertKeyTracked({ ...tree, p }, k);
+    const { tree: next, touched, steps } = insertKeyLogged({ ...tree, p }, k);
     setTree(next);
     setHighlight(new Set(touched));
     setLastKey(k);
-    pushHistory(`insertar ${k} → ok (aleatorio)`);
+    pushHistory(`insertar ${k} → ok (aleatorio)`, steps.map(formatStep));
     setMessage(`Clave ${k} insertada (aleatorio).`);
   }
 
@@ -271,7 +274,34 @@ export function PlayAuto() {
                     ) : (
                       <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
                         {history.map((h) => (
-                          <li key={h.id} className="rounded-2xl border px-2 py-1">· {h.text}</li>
+                          <li key={h.id} className="rounded-2xl border px-2 py-1">
+                            <div className="flex items-center gap-1">
+                              <span className="min-w-0 flex-1">· {h.text}</span>
+                              {h.steps && h.steps.length > 0 && (
+                                <button
+                                  type="button"
+                                  title={openSteps === h.id ? 'Ocultar pasos' : 'Ver pasos'}
+                                  onClick={() => setOpenSteps((o) => (o === h.id ? null : h.id))}
+                                  className="flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                >
+                                  <ListCollapse className="size-3" />
+                                  pasos
+                                </button>
+                              )}
+                            </div>
+                            {openSteps === h.id && h.steps && h.steps.length > 0 && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                {h.steps.map((s, i) => (
+                                  <span key={i} className="contents">
+                                    {i > 0 && <ChevronRight className="size-3 shrink-0 text-zinc-400 dark:text-zinc-500" />}
+                                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] dark:bg-zinc-800">
+                                      {s}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </li>
                         ))}
                       </ul>
                     )}
