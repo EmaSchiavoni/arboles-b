@@ -59,7 +59,7 @@ export function PlayAuto() {
 
   // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
   // debounce en cada cambio (más un volcado al desmontar por cambio de modo).
-  const [initialView] = React.useState(() => loadView(KEYS.autoView));
+  const [initialView] = React.useState(() => loadView(KEYS.autoView) ?? { x: 16, y: 150, k: 1 });
   const viewRef = React.useRef({ x: 16, y: 16, k: 1 });
   const viewTimer = React.useRef<number | null>(null);
   function handleViewChange(v: { x: number; y: number; k: number; w: number; h: number }) {
@@ -285,26 +285,9 @@ export function PlayAuto() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex max-w-[calc(100vw-190px)] shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
-        <Badge>orden p = {p}</Badge>
-        <Badge variant="secondary">máx {p - 1} claves</Badge>
-        <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
-        <Badge variant="secondary">altura {stats.h}</Badge>
-        <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
-        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
-          <OrderPicker id="orden-auto" p={p} onChange={changeP} />
-        </div>
-        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
-          <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
-          <TypeSelector value={tree.keyType} onChange={changeKeyType} />
-        </div>
-      </div>
-
+      <div className="relative min-h-0 flex-1">
       {tree.root === null ? (
-        <div className="min-h-0 flex-1 p-3">
+        <div className="h-full p-3">
           <Card className="mb-3">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
               El árbol está vacío. Insertá la primera clave desde la barra de abajo.
@@ -312,7 +295,6 @@ export function PlayAuto() {
           </Card>
         </div>
       ) : (
-        <div className="relative min-h-0 flex-1">
           <TreeCanvas
           nodes={layout.nodes}
           edges={layout.edges}
@@ -366,15 +348,30 @@ export function PlayAuto() {
             );
           }}
           />
-          {(message || showHistory) && (
-            <div className="pointer-events-none absolute inset-x-2 top-2 z-10 space-y-2">
-              {message && (
-                <p className="mx-auto w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
-                  {message}
-                </p>
-              )}
+      )}
+      <div className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100vw-190px)] flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge>orden p = {p}</Badge>
+              <Badge variant="secondary">máx {p - 1} claves</Badge>
+              <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
+              <Badge variant="secondary">altura {stats.h}</Badge>
+              <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
             </div>
-          )}
+            <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
+                <OrderPicker id="orden-auto" p={p} onChange={changeP} />
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
+                <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
+                <TypeSelector value={tree.keyType} onChange={changeKeyType} />
+              </div>
+            </div>
+            {message && (
+              <p className="w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+                {message}
+              </p>
+            )}
+          </div>
           <Dialog open={showHistory} onOpenChange={setShowHistory}>
             <DialogContent className="max-h-[70dvh] w-[calc(100vw-2rem)] sm:max-w-md">
               <DialogHeader>
@@ -421,7 +418,6 @@ export function PlayAuto() {
             </DialogContent>
           </Dialog>
         </div>
-      )}
 
       <BottomToolbar>
         <div className="flex items-center justify-center gap-2 max-[510px]:w-full">
@@ -429,7 +425,7 @@ export function PlayAuto() {
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') doInsert(); }}
-            inputMode="numeric"
+            inputMode={tree.keyType === 'string' ? 'text' : 'numeric'}
             placeholder="Claves: 1, 2, 3"
             aria-label="Claves (una sola o lista separada por coma, punto, guion o espacio)"
             className="w-36"

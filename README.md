@@ -22,7 +22,7 @@ El validador comprueba: claves ordenadas y sin duplicados (dentro de cada nodo y
 
 ## Interfaz
 
-Componentes estilo shadcn con Tailwind, paleta monocromática (zinc) y radios completamente redondeados. Soporta tema claro y oscuro con persistencia. Diseño mobile-first sin barra superior: el cambio de modo y el tema van en botones flotantes arriba a la derecha. El diagrama ocupa toda la pantalla, sin bordes; se navega arrastrando el fondo y con zoom (pellizco en móvil, `Ctrl` + rueda o `Ctrl` + `+`/`-` en PC, con indicador de % editable abajo a la derecha —en móvil el indicador aparece unos segundos debajo de los botones superiores al cambiar el zoom—); los mensajes y el historial o resultado de la validación aparecen como paneles flotantes sobre él. Las barras de herramientas son flotantes, están fijadas abajo, centradas y con ancho mínimo.
+Componentes estilo shadcn con Tailwind, paleta monocromática (zinc) y radios completamente redondeados. Soporta tema claro y oscuro con persistencia. Diseño mobile-first sin barra superior: el cambio de modo y el tema van en botones flotantes arriba a la derecha. El diagrama ocupa toda la pantalla, sin bordes; se navega arrastrando el fondo y con zoom (pellizco en móvil, `Ctrl` + rueda o `Ctrl` + `+`/`-` en PC, con indicador de % editable abajo a la derecha —en móvil el indicador aparece unos segundos debajo de los botones superiores al cambiar el zoom—); los chips de información, los controles de orden y tipo, los mensajes y el historial o resultado de la validación flotan sobre el diagrama para no ocupar espacio del layout. Las barras de herramientas son flotantes, están fijadas abajo, centradas y con ancho mínimo.
 
 ## Uso
 

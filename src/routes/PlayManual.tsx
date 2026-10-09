@@ -416,35 +416,9 @@ export function PlayManual() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex max-w-[calc(100vw-190px)] shrink-0 flex-wrap items-center gap-2 px-3 pt-2">
-        <Badge>orden p = {p}</Badge>
-        <Badge variant="secondary">máx {p - 1} claves</Badge>
-        <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
-        <Badge variant="secondary">{keyType === 'string' ? 'texto' : 'numérico'}</Badge>
-        {rootId ? <Badge variant="outline">raíz elegida</Badge> : <Badge variant="error">sin raíz</Badge>}
-        {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
-        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
-          <OrderPicker
-            id="orden-manual"
-            p={p}
-            onChange={(next) => {
-              setDraft((d) => ({ ...d, p: next }));
-              setRedoStack([]);
-              setResult(null);
-            }}
-          />
-        </div>
-        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
-          <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
-          <TypeSelector value={keyType} onChange={changeKeyType} />
-        </div>
-      </div>
-
+      <div className="relative min-h-0 flex-1">
       {nodes.length === 0 ? (
-        <div className="min-h-0 flex-1 p-3">
+        <div className="h-full p-3">
           <Card className="mb-3">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
               No hay nodos. Creá el primero con el botón de la barra inferior.
@@ -452,7 +426,6 @@ export function PlayManual() {
           </Card>
         </div>
       ) : (
-        <div className="relative min-h-0 flex-1">
           <TreeCanvas
           nodes={nodes}
           edges={edges}
@@ -608,15 +581,40 @@ export function PlayManual() {
             );
           }}
           />
-          {linking && (
-            <div className="pointer-events-none absolute inset-x-2 top-2 z-10">
-                <p className="mx-auto w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-center text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
+      )}
+      <div className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100vw-190px)] flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge>orden p = {p}</Badge>
+              <Badge variant="secondary">máx {p - 1} claves</Badge>
+              <Badge variant="secondary">mín {Math.ceil(p / 2) - 1} claves · {Math.ceil(p / 2)} punteros</Badge>
+              <Badge variant="secondary">{keyType === 'string' ? 'texto' : 'numérico'}</Badge>
+              {rootId ? <Badge variant="outline">raíz elegida</Badge> : <Badge variant="error">sin raíz</Badge>}
+              {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
+            </div>
+            <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
+                <OrderPicker
+                  id="orden-manual"
+                  p={p}
+                  onChange={(next) => {
+                    setDraft((d) => ({ ...d, p: next }));
+                    setRedoStack([]);
+                    setResult(null);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl border bg-card/80 px-3 py-1.5 shadow-lg backdrop-blur">
+                <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
+                <TypeSelector value={keyType} onChange={changeKeyType} />
+              </div>
+            </div>
+            {linking && (
+              <p className="w-max max-w-full rounded-full bg-zinc-900/85 px-3 py-1 text-xs text-zinc-100 dark:bg-zinc-100/90 dark:text-zinc-900">
                 Tocá el icono <ArrowDownToLine className="inline size-3.5" /> del nodo destino · Esc o fondo para cancelar
               </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      )}
 
       <BottomToolbar>
         <Button size="sm" onClick={addNode}><Plus />Nodo</Button>
