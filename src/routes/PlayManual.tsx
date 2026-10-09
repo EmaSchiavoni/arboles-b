@@ -404,7 +404,7 @@ export function PlayManual() {
                                 data-key-cell={`${n.id}:${slot}`}
                                 inputMode="numeric"
                                 aria-label={`Clave ${slot + 1}`}
-                                className={cn('h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
+                                className={cn('h-8 min-w-0 flex-1 select-text rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium shadow-none focus-visible:ring-0', bad && 'text-red-600 dark:text-red-400')}
                                 onBlur={(e) => commitKeyCell(n.id, slot, e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                               />
@@ -424,7 +424,7 @@ export function PlayManual() {
                                 data-empty-cell={n.id}
                                 inputMode="numeric"
                                 aria-label={`Clave vacía ${slot + 1}`}
-                                className="h-8 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium text-muted-foreground shadow-none focus-visible:ring-0"
+                                className="h-8 min-w-0 flex-1 select-text rounded-none border-0 bg-transparent px-0 text-center text-sm font-medium text-muted-foreground shadow-none focus-visible:ring-0"
                                 onBlur={(e) => { addKey(n.id, e.target.value); e.target.value = ''; }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {

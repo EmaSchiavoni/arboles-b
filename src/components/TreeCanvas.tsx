@@ -142,8 +142,8 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
 
   function onPointerDown(e: React.PointerEvent) {
     const p = local(e);
-    const onNode = !!(e.target as HTMLElement).closest('[data-node]');
-    pointers.current.set(e.pointerId, { ...p, node: onNode });
+    const inert = !!(e.target as HTMLElement).closest('[data-node],input,button');
+    pointers.current.set(e.pointerId, { ...p, node: inert });
     if (pointers.current.size === 2) {
       // Pinch solo si ambos dedos están sobre el fondo (no sobre un nodo).
       const pts = [...pointers.current.values()];
@@ -153,7 +153,8 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
         drag.current.active = false;
       }
     }
-    if (onNode) return;
+    if (inert) return;
+    document.getSelection()?.removeAllRanges();
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -262,11 +263,11 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
       onPointerUp={endPointer}
       onPointerCancel={endPointer}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-node]')) return;
+        if ((e.target as HTMLElement).closest('[data-node],input,button')) return;
         onBackgroundClick?.();
       }}
       className={cn(
-        'relative h-full w-full touch-none overflow-hidden bg-white dark:bg-zinc-950',
+        'relative h-full w-full touch-none select-none overflow-hidden bg-white dark:bg-zinc-950',
         linking && 'ring-1 ring-inset ring-zinc-500',
       )}
     >
@@ -324,7 +325,7 @@ export function TreeCanvas<T extends CanvasNode>({ nodes, edges, renderNode, hig
           }}
           inputMode="numeric"
           aria-label="Nivel de zoom en porcentaje"
-          className="w-9 bg-transparent text-center tabular-nums focus:outline-none"
+          className="w-9 select-text bg-transparent text-center tabular-nums focus:outline-none"
         />
         <span>%</span>
       </span>
