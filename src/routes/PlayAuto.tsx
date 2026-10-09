@@ -54,6 +54,7 @@ export function PlayAuto() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
+  const [confirmType, setConfirmType] = React.useState<BTree['keyType'] | null>(null);
   const [openSteps, setOpenSteps] = React.useState<number | null>(null);
 
   // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
@@ -116,12 +117,27 @@ export function PlayAuto() {
     return `${n} ${n === 1 ? one : many}`;
   }
 
-  // El tipo de clave se elige por adelantado y solo con el árbol vacío.
+  // Cambiar el tipo con el árbol vacío es directo; con claves pide
+  // confirmación porque vacía el árbol.
   function changeKeyType(next: BTree['keyType']) {
-    if (next === tree.keyType || countKeys(tree.root) > 0) return;
-    setTree({ p, root: null, keyType: next });
+    if (next === tree.keyType) return;
+    if (countKeys(tree.root) === 0) {
+      setTree({ p, root: null, keyType: next });
+      setHighlight(new Set());
+      setLastKey(null);
+      return;
+    }
+    setConfirmType(next);
+  }
+
+  function confirmTypeChange() {
+    if (!confirmType) return;
+    setTree({ p, root: null, keyType: confirmType });
     setHighlight(new Set());
     setLastKey(null);
+    setMessage(`Tipo cambiado a ${confirmType === 'string' ? 'texto' : 'numérico'}. Árbol vaciado.`);
+    pushHistory(`tipo → ${confirmType === 'string' ? 'texto' : 'numérico'} (árbol vaciado)`);
+    setConfirmType(null);
   }
 
   function doInsert() {
@@ -277,9 +293,14 @@ export function PlayAuto() {
         <Badge variant="secondary">{stats.n} nodos · {stats.k} claves</Badge>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
-        <OrderPicker id="orden-auto" p={p} onChange={changeP} />
-        <TypeSelector value={tree.keyType} onChange={changeKeyType} locked={countKeys(tree.root) > 0} />
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
+          <OrderPicker id="orden-auto" p={p} onChange={changeP} />
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
+          <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
+          <TypeSelector value={tree.keyType} onChange={changeKeyType} />
+        </div>
       </div>
 
       {tree.root === null ? (
@@ -436,6 +457,16 @@ export function PlayAuto() {
           doClear();
           setConfirmClear(false);
         }}
+      />
+      <ConfirmDialog
+        open={confirmType !== null}
+        onOpenChange={(o) => {
+          if (!o) setConfirmType(null);
+        }}
+        title="Cambiar tipo de clave"
+        description={`Cambiar a claves de ${confirmType === 'string' ? 'texto' : 'tipo numérico'} vaciará el árbol actual. Esta acción no se puede deshacer.`}
+        confirmLabel="Vaciar y cambiar"
+        onConfirm={confirmTypeChange}
       />
     </div>
   );

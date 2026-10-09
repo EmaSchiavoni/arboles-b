@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
+import { ConfirmDialog } from '../components/ui/alert-dialog';
 import { BottomToolbar } from '../components/BottomToolbar';
 import { OrderPicker, ORDER_MAX, ORDER_MIN } from '../components/OrderPicker';
 import { TypeSelector } from '../components/TypeSelector';
@@ -74,6 +75,7 @@ export function PlayManual() {
   const [linking, setLinking] = React.useState<{ nodeId: string; slot: number } | null>(null);
   const [result, setResult] = React.useState<ValidationResult | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [confirmType, setConfirmType] = React.useState<'number' | 'string' | null>(null);
   const dragRef = React.useRef<{ id: string; nx: number; ny: number; sx: number; sy: number; snap: Draft } | null>(null);
   // Vista actual del canvas (con su tamaño): los nodos nuevos nacen en el
   // centro del viewport para no perderse fuera de vista.
@@ -81,13 +83,32 @@ export function PlayManual() {
 
   const { nodes, rootId, p, keyType } = draft;
   const isStr = keyType === 'string';
-  // El tipo se elige por adelantado y solo sin claves en ningún nodo.
-  const typeLocked = nodes.some((n) => n.keys.length > 0);
 
+  // Cambiar el tipo sin claves es directo; con claves pide confirmación
+  // porque vacía los nodos (se puede deshacer).
   function changeKeyType(next: 'number' | 'string') {
-    if (next === keyType || nodes.some((n) => n.keys.length > 0)) return;
-    setDraft((d) => ({ ...d, keyType: next }));
+    if (next === keyType) return;
+    if (!nodes.some((n) => n.keys.length > 0)) {
+      setDraft((d) => ({ ...d, keyType: next }));
+      setResult(null);
+      return;
+    }
+    setConfirmType(next);
+  }
+
+  function confirmTypeChange() {
+    if (!confirmType) return;
+    pushUndo(draft);
+    setRedoStack([]);
+    setDraft((d) => ({
+      ...d,
+      keyType: confirmType,
+      nodes: d.nodes.map((n) => ({ ...n, keys: [], slots: [null] as (string | null)[] })),
+    }));
     setResult(null);
+    setSheetOpen(false);
+    setLinking(null);
+    setConfirmType(null);
   }
 
   // Vista del canvas (paneo/zoom): se restaura al abrir y se guarda con
@@ -404,17 +425,22 @@ export function PlayManual() {
         {result && (result.valid ? <Badge variant="ok">válido</Badge> : <Badge variant="error">{result.issues.length} errores</Badge>)}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
-        <OrderPicker
-          id="orden-manual"
-          p={p}
-          onChange={(next) => {
-            setDraft((d) => ({ ...d, p: next }));
-            setRedoStack([]);
-            setResult(null);
-          }}
-        />
-        <TypeSelector value={keyType} onChange={changeKeyType} locked={typeLocked} />
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
+          <OrderPicker
+            id="orden-manual"
+            p={p}
+            onChange={(next) => {
+              setDraft((d) => ({ ...d, p: next }));
+              setRedoStack([]);
+              setResult(null);
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl border bg-card/60 px-3 py-1.5">
+          <span className="shrink-0 text-sm text-muted-foreground">Tipo de clave</span>
+          <TypeSelector value={keyType} onChange={changeKeyType} />
+        </div>
       </div>
 
       {nodes.length === 0 ? (
@@ -638,6 +664,16 @@ export function PlayManual() {
           </div>
         </SheetContent>
       </Sheet>
+      <ConfirmDialog
+        open={confirmType !== null}
+        onOpenChange={(o) => {
+          if (!o) setConfirmType(null);
+        }}
+        title="Cambiar tipo de clave"
+        description={`Cambiar a claves de ${confirmType === 'string' ? 'texto' : 'tipo numérico'} vaciará los nodos actuales (se puede deshacer).`}
+        confirmLabel="Vaciar y cambiar"
+        onConfirm={confirmTypeChange}
+      />
     </div>
   );
 }
