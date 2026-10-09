@@ -3,7 +3,6 @@ import { ArrowDownToLine, Crown, GripVertical, Plus, Trash2, X, ShieldCheck, Era
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { ConfirmDialog } from '../components/ui/alert-dialog';
 import { BottomToolbar } from '../components/BottomToolbar';
@@ -418,12 +417,10 @@ export function PlayManual() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="relative min-h-0 flex-1">
       {nodes.length === 0 ? (
-        <div className="h-full p-3">
-          <Card className="mb-3">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No hay nodos. Creá el primero con el botón de la barra inferior.
-            </CardContent>
-          </Card>
+        <div className="flex h-full items-center justify-center p-3">
+          <p className="text-center text-sm text-muted-foreground">
+            No hay nodos. Creá el primero con el botón de la barra inferior.
+          </p>
         </div>
       ) : (
           <TreeCanvas

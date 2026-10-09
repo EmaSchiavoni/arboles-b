@@ -3,7 +3,6 @@ import { Dices, Eraser, Plus, Search, Trash2, ChevronRight, ListCollapse } from 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { BottomToolbar } from '../components/BottomToolbar';
@@ -287,12 +286,10 @@ export function PlayAuto() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="relative min-h-0 flex-1">
       {tree.root === null ? (
-        <div className="h-full p-3">
-          <Card className="mb-3">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              El árbol está vacío. Insertá la primera clave desde la barra de abajo.
-            </CardContent>
-          </Card>
+        <div className="flex h-full items-center justify-center p-3">
+          <p className="text-center text-sm text-muted-foreground">
+            El árbol está vacío. Insertá la primera clave desde la barra de abajo.
+          </p>
         </div>
       ) : (
           <TreeCanvas
